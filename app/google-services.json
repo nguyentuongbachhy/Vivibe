@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "126631239702",
+    "project_id": "vivibe-108ba",
+    "storage_bucket": "vivibe-108ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:126631239702:android:83577928c02f270c98d537",
+        "android_client_info": {
+          "package_name": "com.example.vivibe"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "126631239702-7idve9l9di6lnc8gr6buqp8pphdv5r35.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vivibe",
+            "certificate_hash": "b22a717519a6cdd78c2cc711d94ccb1a0a51529b"
+          }
+        },
+        {
+          "client_id": "126631239702-2qqr293af8r2euet7rm7qtrg2dil9tdn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEJXHJO7UqoXjyomzkeh7ycB-UI8rDvGM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "126631239702-2qqr293af8r2euet7rm7qtrg2dil9tdn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

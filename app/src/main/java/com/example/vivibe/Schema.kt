@@ -1,0 +1,32 @@
+package com.example.vivibe
+
+data class User(
+    val googleId: String?,
+    val name: String?,
+    val email: String?,
+    val profilePictureUri: String?
+)
+
+data class Artist(
+    val id: Int,
+    val name: String
+)
+
+data class SpeedDialSong(
+    val id: Int,
+    val title: String,
+    val thumbnailUrl: String,
+)
+
+data class QuickPicksSong(
+    val id: Int,
+    val title: String,
+    val thumbnailUrl: String,
+    val views: Int,
+    val artist: Artist
+)
+
+data class Genre(
+    val id: Int,
+    val name: String
+)
