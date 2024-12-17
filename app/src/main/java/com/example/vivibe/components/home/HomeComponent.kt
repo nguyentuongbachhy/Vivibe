@@ -72,13 +72,49 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
     }
 
     @Composable
-    fun QuickPicksScreen(onSongMoreClick: (QuickPicksSong) -> Unit) {
+    private fun GenreItem(genre: Genre) {
+        Box(
+            modifier = Modifier
+                .padding(start = 0.dp, end = 8.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF1A191C))
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFF202020),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                .shadow(6.dp, RoundedCornerShape(8.dp))
+                .clickable {}
+                .padding(12.dp)
+        ) {
+            Text(
+                text = genre.name.replaceFirstChar { it.uppercaseChar() },
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight(Alignment.CenterVertically)
+            )
+        }
+    }
+
+
+    @Composable
+    fun QuickPicksScreen(onSongMoreClick: (QuickPicksSong) -> Unit, onPlayMusicNavigate: (Int) -> Unit) {
 
         val quickPicksSong = viewModel.quickPicks.collectAsState()
 
         val itemsPerColumn = 4
 
         val pages = quickPicksSong.value.chunked(itemsPerColumn)
+
+        if(pages.isEmpty()) {
+            return
+        }
 
         Column(
             modifier = Modifier
@@ -142,7 +178,14 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
                             items(songs) { song ->
-                                QuickPickSongItem(song, onSongMoreClick)
+                                QuickPickSongItem(
+                                    song = song,
+                                    onSongMoreClick = onSongMoreClick,
+                                    onClick = {
+                                        onPlayMusicNavigate(song.id)
+                                        viewModel.updatePlayHistory(song.id)
+                                    }
+                                )
                             }
                         }
                     }
@@ -151,15 +194,42 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
         }
     }
 
+    @SuppressLint("DefaultLocale")
+    private fun convertIntegerToString(number: Int): String {
+        if (number < 1000) return number.toString()
+
+        val suffixes = arrayOf("", "K", "M", "B")
+        var value = number.toDouble()
+        var index = 0
+
+        while (value >= 1000 && index < suffixes.size - 1) {
+            value /= 1000
+            index++
+        }
+
+        return if (value >= 10) {
+            "${value.toInt()}${suffixes[index]}"
+        } else {
+            String.format("%.1f%s", value, suffixes[index])
+        }
+    }
+
     @Composable
-    fun QuickPickSongItem(song: QuickPicksSong, onSongMoreClick: (QuickPicksSong) -> Unit) {
+    fun QuickPickSongItem(
+        song: QuickPicksSong,
+        onSongMoreClick: (QuickPicksSong) -> Unit,
+        onClick: (Int) -> Unit
+    ) {
         Row(
             modifier = Modifier
                 .widthIn(max = 270.dp)
                 .heightIn(max = 56.dp)
                 .padding(0.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .padding(end = 8.dp),
+                .padding(end = 8.dp)
+                .clickable {
+                    onClick(song.id)
+                },
             verticalAlignment = Alignment.CenterVertically
         ) {
             AsyncImage(
@@ -214,7 +284,7 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
     }
 
     @Composable
-    fun SpeedDialScreen(user: User?) {
+    fun SpeedDialScreen(user: User?, onPlayMusicNavigate: (Int) -> Unit) {
         val speedDialSongs = viewModel.speedDial.collectAsState()
         val itemsPerPage = 9
         val pages = speedDialSongs.value.chunked(itemsPerPage)
@@ -239,8 +309,13 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
             ) {
                 items(currentPageItems) {song ->
                     SpeedDialSongItem(
+                        songId = song.id,
                         thumbnail = song.thumbnailUrl,
-                        title = song.title
+                        title = song.title,
+                        onClick = {
+                            onPlayMusicNavigate(song.id)
+                            viewModel.updatePlayHistory(song.id)
+                        }
                     )
                 }
             }
@@ -264,59 +339,6 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
             }
         }
     }
-
-    @Composable
-    private fun GenreItem(genre: Genre) {
-        Box(
-            modifier = Modifier
-                .padding(start = 0.dp, end = 8.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF1A191C))
-                .border(
-                    width = 1.dp,
-                    color = Color(0xFF202020),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .shadow(6.dp, RoundedCornerShape(8.dp))
-                .clickable {}
-                .padding(12.dp)
-        ) {
-            Text(
-                text = genre.name.replaceFirstChar { it.uppercaseChar() },
-                color = Color.White,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight(Alignment.CenterVertically)
-            )
-        }
-    }
-
-
-    @SuppressLint("DefaultLocale")
-    private fun convertIntegerToString(number: Int): String {
-        if (number < 1000) return number.toString()
-
-        val suffixes = arrayOf("", "K", "M", "B")
-        var value = number.toDouble()
-        var index = 0
-
-        while (value >= 1000 && index < suffixes.size - 1) {
-            value /= 1000
-            index++
-        }
-
-        return if (value >= 10) {
-            "${value.toInt()}${suffixes[index]}"
-        } else {
-            String.format("%.1f%s", value, suffixes[index])
-        }
-    }
-
 
     @Composable
     fun UserInfo(user: User?) {
@@ -358,14 +380,19 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
 
     @Composable
     private fun SpeedDialSongItem(
+        songId: Int,
         thumbnail: String,
-        title: String
+        title: String,
+        onClick: (Int) -> Unit
     ) {
         Box(
             modifier = Modifier
                 .size(92.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .padding(4.dp)
+                .clickable {
+                    onClick(songId)
+                }
         ) {
 
             AsyncImage(

@@ -41,6 +41,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     fun insertOrUpdateSongPlayHistory(songId: Int, googleId: String) {
         val db = writableDatabase
+        println("Updated database successfully")
         try {
             val cursor: Cursor = db.rawQuery(
                 """
@@ -84,7 +85,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                    SELECT $COLUMN_SONG_ID
                     FROM $TABLE_SONG_PLAY_HISTORY
                     WHERE $COLUMN_GOOGLE_ID = ?
-                    ORDER BY $COLUMN_PLAY_COUNT DESC, $COLUMN_LAST_PLAYED DESC
+                    ORDER BY $COLUMN_LAST_PLAYED DESC, $COLUMN_PLAY_COUNT DESC
                     LIMIT ?
                 """.trimIndent(), arrayOf(googleId, limit.toString())
             )

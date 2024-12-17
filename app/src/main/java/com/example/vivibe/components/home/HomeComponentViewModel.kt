@@ -1,7 +1,6 @@
 package com.example.vivibe.components.home
 
 import android.content.Context
-import androidx.compose.runtime.MutableState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vivibe.Genre
@@ -15,16 +14,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class HomeComponentViewModel(
-    context: Context,
+    appContext: Context,
     token: String,
     private val googleId: String,
+    private val songClient: SongClient,
 ): ViewModel() {
-    private val songClient = SongClient(context, token)
-    private val genreClient = GenreClient(context, token)
-    private val dbHelper = DatabaseHelper(context)
-
-    private val _isLoading = MutableStateFlow(true)
-
+    private val genreClient = GenreClient(appContext, token)
+    private val dbHelper = DatabaseHelper(appContext)
 
     private val _speedDial = MutableStateFlow<List<SpeedDialSong>>(emptyList())
     val speedDial: StateFlow<List<SpeedDialSong>> get() = _speedDial
@@ -42,11 +38,9 @@ class HomeComponentViewModel(
 
     private fun loadStuff() {
         viewModelScope.launch {
-            _isLoading.value = true
             fetchGenreList()
             fetchQuickPicks()
             fetchSpeedDial()
-            _isLoading.value = false
         }
     }
 
@@ -101,10 +95,5 @@ class HomeComponentViewModel(
 
     fun updatePlayHistory(songId: Int) {
         dbHelper.insertOrUpdateSongPlayHistory(songId, googleId)
-    }
-
-    fun loadTopSongs(limit: Int): List<Int> {
-        val songIds = dbHelper.getTopSongs(googleId, limit)
-        return songIds
     }
 }

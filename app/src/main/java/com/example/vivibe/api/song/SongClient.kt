@@ -1,8 +1,10 @@
 package com.example.vivibe.api.song
 
 import android.content.Context
+import com.example.vivibe.PlaySong
 import com.example.vivibe.QuickPicksSong
 import com.example.vivibe.SpeedDialSong
+import okhttp3.internal.wait
 
 class SongClient(context: Context, token: String) {
     private val tag = "SongClient: "
@@ -40,6 +42,22 @@ class SongClient(context: Context, token: String) {
             print("$tag Error: ${e.message}")
             emptyList()
         }
+    }
 
+    suspend fun fetchPlayingSong(songId: Int) : PlaySong? {
+        return try {
+            val response = songService.fetchPlayingSong(songId)
+            if (response?.err == 0) {
+                response.data?.also {
+                    println("$tag Song fetched successfully")
+                }
+            } else {
+                print("$tag Error: ${response?.msg}")
+                null
+            }
+        }catch (e: Exception) {
+            print("$tag Error: ${e.message}")
+            null
+        }
     }
 }

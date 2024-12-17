@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.vivibe.R
 
 @Composable
@@ -67,13 +69,15 @@ fun BottomNavigation(navController: NavController) {
         LibraryRouter
     )
 
-    val selectedIndex = rememberSaveable { mutableIntStateOf((0)) }
+    val currentDestination = navController.currentBackStackEntryAsState().value?.destination
+    val currentRoute = currentDestination?.route
 
     NavigationBar(
+        modifier = Modifier.defaultMinSize(minHeight = 64.dp),
         containerColor = Color(0xFF101010),
     ) {
-        items.forEachIndexed{index, item ->
-            val isSelected = index == selectedIndex.intValue
+        items.forEach{item ->
+            val isSelected = currentRoute == item.route
 
             NavigationBarItem(
                 label = { Text(text = item.title,
@@ -88,9 +92,8 @@ fun BottomNavigation(navController: NavController) {
                     modifier = Modifier.size(24.dp),
                     tint = Color.White
                     ) },
-                selected = index == selectedIndex.intValue,
+                selected = isSelected,
                 onClick = {
-                    selectedIndex.intValue = index
                     navController.navigate(item.route) {
                         popUpTo(HomeRouter.route) {
                             inclusive = true
@@ -104,7 +107,8 @@ fun BottomNavigation(navController: NavController) {
                     selectedTextColor = Color.White,
                     unselectedTextColor = Color.White,
                     indicatorColor = Color(0xFF101010)
-                )
+                ),
+                modifier = Modifier.defaultMinSize(minHeight = 64.dp)
             )
         }
     }

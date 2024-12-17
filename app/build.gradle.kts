@@ -60,6 +60,7 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
+    implementation(libs.androidx.material)
     implementation(libs.androidx.material3)
     implementation(libs.firebase.auth)
     implementation(platform(libs.firebase.bom))
@@ -75,10 +76,9 @@ dependencies {
     implementation(libs.logging.interceptor)
     implementation(libs.androidx.foundation)
     implementation(libs.accompanist.swiperefresh)
-
-//    implementation(libs.androidx.paging.compose)
-//    implementation(libs.accompanist.pager)
-//    implementation(libs.accompanist.pager.indicators)
+    implementation(libs.accompanist.navigation.animation)
+    implementation(libs.media3.exoplayer)
+    implementation(libs.androidx.constraintlayout.compose)
 
 
     testImplementation(libs.junit)

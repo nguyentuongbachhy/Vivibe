@@ -1,16 +1,22 @@
 package com.example.vivibe
 
+import com.google.accompanist.navigation.animation.composable
 import android.annotation.SuppressLint
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,10 +27,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.FractionalThreshold
+//noinspection UsingMaterialAndMaterial3Libraries
+import androidx.compose.material.rememberSwipeableState
+import androidx.compose.material.swipeable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,135 +44,382 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layoutId
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
+import androidx.constraintlayout.compose.ExperimentalMotionApi
+import androidx.constraintlayout.compose.MotionLayout
+import androidx.constraintlayout.compose.MotionScene
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
+import androidx.lifecycle.ViewModelProvider
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
+import com.example.vivibe.components.song.SongFullDetails
 import com.example.vivibe.router.*
 import com.example.vivibe.pages.*
 import com.example.vivibe.pages.home.Home
+import com.google.accompanist.navigation.animation.AnimatedNavHost
 import kotlinx.coroutines.launch
-
+import kotlin.math.max
+import kotlin.math.min
 
 class MainActivity : ComponentActivity() {
+    private val viewModel: MainViewModel by lazy {
+        ViewModelProvider(this, MainViewModelFactory(applicationContext))[MainViewModel::class.java]
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
         makeStatusBarTransparent()
 
+
         setContent {
             AppScreen()
         }
     }
 
+    @OptIn(ExperimentalAnimationApi::class)
     @SuppressLint("CoroutineCreationDuringComposition")
-    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     private fun AppScreen() {
+        val playingSong = viewModel.playingSong.collectAsState()
         val navController = rememberNavController()
-        val context = LocalContext.current
-
-        val bottomSheetState = rememberModalBottomSheetState()
+        val saveableStateHolder = rememberSaveableStateHolder()
         val scope = rememberCoroutineScope()
 
-        val bottomSheetController = remember { BottomSheetController() }
-
         Scaffold(
-            bottomBar = { BottomNavigation(navController) },
+            bottomBar = {
+                BottomNavigation(navController)
+            },
             modifier = Modifier
                 .windowInsetsPadding(WindowInsets.statusBars)
-        ) {
+        ) { innerPadding ->
             Box(
                 modifier = Modifier
-                    .padding(it)
+                    .padding(innerPadding)
+                    .fillMaxSize()
                     .background(Color(0xFF101010))
-            )  {
-                NavHost(
+            ) {
+                AnimatedNavHost(
                     navController = navController,
                     startDestination = HomeRouter.route
                 ) {
                     composable(HomeRouter.route) {
-                        Home(context).HomeScreen(
-                            navController,
-                            onSongMoreClick = { song ->
-                                scope.launch {
-                                    bottomSheetController.showBottomSheet(song)
+                        saveableStateHolder.SaveableStateProvider(HomeRouter.route) {
+                            Home(
+                                LocalContext.current,
+                                viewModel.token!!,
+                                viewModel.googleId!!,
+                                viewModel.songClient
+                            ).HomeScreen(
+                                navController,
+                                onSongMoreClick = { song ->
+                                    viewModel.showBottomSheet(song)
+                                },
+                                onPlayMusicNavigate = { songId ->
+                                    scope.launch {
+                                        viewModel.fetchPlaySong(songId)
+                                    }
                                 }
-                            })
+                            )
+                        }
                     }
+
                     composable(SamplesRouter.route) {
-                        Samples().SamplesScreen()
+                        saveableStateHolder.SaveableStateProvider(SamplesRouter.route) {
+                            Samples().SamplesScreen()
+                        }
                     }
 
                     composable(ExploreRouter.route) {
-                        Explore().SampleScreen()
+                        saveableStateHolder.SaveableStateProvider(ExploreRouter.route) {
+                            Explore().ExploreScreen()
+                        }
                     }
 
                     composable(LibraryRouter.route) {
-                        Library().LibraryScreen()
+                        saveableStateHolder.SaveableStateProvider(LibraryRouter.route) {
+                            Library().LibraryScreen()
+                        }
                     }
 
                     composable(NotificationsRouter.route) {
-                        Notifications().NotificationsScreen()
+                        saveableStateHolder.SaveableStateProvider(NotificationsRouter.route) {
+                            Notifications().NotificationsScreen()
+                        }
                     }
 
                     composable(SearchRouter.route) {
-                        Search().SearchScreen()
+                        saveableStateHolder.SaveableStateProvider(SearchRouter.route) {
+                            Search().SearchScreen()
+                        }
                     }
+                }
+
+                if(playingSong.value != null) {
+                    MotionPlayerLayout(
+                        song = playingSong.value!!,
+                        onSwipeToFullScreen = {
+                            // Optional action when swiping
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .zIndex(1f)
+                    )
                 }
             }
         }
 
         BottomSheetArea(
-            bottomSheetController = bottomSheetController,
-            bottomSheetState = bottomSheetState
+            onHideBottomSheet = { viewModel.hideBottomSheet() }
         )
+    }
+
+    @OptIn(ExperimentalMaterialApi::class, ExperimentalMotionApi::class)
+    @Composable
+    fun MotionPlayerLayout(
+        song: PlaySong,
+        onSwipeToFullScreen: () -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        val context = LocalContext.current
+        val density = LocalDensity.current
+        val scope = rememberCoroutineScope()
+        val configuration = LocalConfiguration.current
+
+        val screenHeight = with(density) { configuration.screenHeightDp.dp.toPx() }
+        val swipeAreaHeight = screenHeight - 200
+
+        val motionSceneContent = remember {
+            context.resources.openRawResource(R.raw.motion_scene)
+                .readBytes()
+                .decodeToString()
+        }
+
+        val swipeableState = rememberSwipeableState(0)
+        val anchors = mapOf(0f to 0, -swipeAreaHeight to 1)
+        val swipeProgress = swipeableState.offset.value / -swipeAreaHeight
+        val motionProgress = max(min(swipeProgress, 1f), 0f)
+
+        val enableTouch = remember { mutableStateOf(false) }
+
+        LaunchedEffect(song) {
+            if (swipeableState.currentValue == 0) {
+                swipeableState.animateTo(1)
+            }
+        }
+        Box(
+            modifier = if(motionProgress > 0.1f) {
+                modifier
+                    .fillMaxWidth()
+                    .wrapContentHeight()
+                    .clickable(enabled = enableTouch.value, indication = null, interactionSource = remember { MutableInteractionSource() }) {  }
+                    .background(Color.Transparent)
+            } else {
+                modifier
+                    .fillMaxWidth()
+                    .height(68.dp)
+                    .clickable(enabled = enableTouch.value, indication = null, interactionSource = remember { MutableInteractionSource() }) {  }
+                    .background(Color.Transparent)
+            }
+        ) {
+            MotionLayout(
+                motionScene = MotionScene(content = motionSceneContent),
+                progress = motionProgress,
+                modifier = if(motionProgress > 0.5f) {
+                    modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF101010))
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            scope.launch { swipeableState.animateTo(0) }
+                        }
+                } else{
+                    modifier
+                        .fillMaxSize()
+                        .background(Color(0xFF101010))
+                        .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {
+                            scope.launch { swipeableState.animateTo(1) }
+                        }
+                        .align(Alignment.BottomEnd)
+                },
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().layoutId("navigationBar").padding(vertical = 8.dp, horizontal = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clickable {
+                                scope.launch {
+                                    swipeableState.animateTo(0)
+                                }
+                            }
+                            .background(Color(0xFF101010)),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_out_full_screen),
+                            contentDescription = "Close",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = Color.White
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clickable {
+                                viewModel.showBottomSheet(
+                                    QuickPicksSong(
+                                        id = song.id,
+                                        title = song.title,
+                                        thumbnailUrl = song.thumbnailUrl,
+                                        views = song.views,
+                                        artist = song.artist
+                                    )
+                                )
+                            }
+                            .background(Color(0xFF101010)),
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_more_vert),
+                            contentDescription = "More",
+                            modifier = Modifier.fillMaxSize(),
+                            tint = Color.White
+                        )
+                    }
+                }
+
+
+                AsyncImage(
+                    model = song.thumbnailUrl,
+                    contentDescription = song.title,
+                    modifier = Modifier
+                        .fillMaxHeight(0.3f)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFF101010))
+                        .clickable(
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            scope.launch { swipeableState.animateTo(1) }
+                        }
+                        .alpha(1f)
+                        .zIndex(1f)
+                        .swipeable(
+                            state = swipeableState,
+                            anchors = anchors,
+                            thresholds = { _, _ -> FractionalThreshold(0.2f) },
+                            orientation = Orientation.Vertical
+                        )
+                        .layoutId("thumbnail"),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Song Details
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .fillMaxHeight()
+                        .alpha(1f - min(motionProgress * 2, 1f))
+                        .zIndex(1f)
+                        .layoutId("details"),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        horizontalAlignment = Alignment.Start
+                    ) {
+                        Text(
+                            text = song.title.replaceFirstChar { it.uppercaseChar() },
+                            color = Color.White,
+                            maxLines = 1,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = song.artist.name,
+                            color = Color.LightGray,
+                            maxLines = 1,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    Icon(
+                        painter = painterResource(R.drawable.ic_play_outline),
+                        contentDescription = "Play Or Pause",
+                        tint = Color.White
+                    )
+                }
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF101010))
+                        .layoutId("content")
+                ) {
+                    SongFullDetails(
+                        song = song,
+                        modifier = Modifier
+                            .alpha(min(motionProgress, 1f))
+                            .fillMaxWidth()
+                    )
+                }
+            }
+        }
+        if (motionProgress > 0.5f) {
+            enableTouch.value = true
+        } else {
+            enableTouch.value = false
+        }
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun BottomSheetArea(
-        bottomSheetController: BottomSheetController,
-        bottomSheetState: SheetState
+    fun BottomSheetArea(
+        onHideBottomSheet: () -> Unit
     ) {
-        val showBottomSheet by bottomSheetController.showBottomSheet.collectAsState()
-        val currentSong by bottomSheetController.currentSong.collectAsState()
+        val showBottomSheet by viewModel.showBottomSheet.collectAsState()
+        val currentBottomSheetSong by viewModel.currentBottomSheetSong.collectAsState()
 
-        if (showBottomSheet && currentSong != null) {
+        if (showBottomSheet && currentBottomSheetSong != null) {
             ModalBottomSheet(
-                onDismissRequest = {
-                    bottomSheetController.hideBottomSheet()
-                },
-                sheetState = bottomSheetState,
-                containerColor = Color.Transparent,
-                modifier = Modifier.fillMaxHeight()
-            ) {
-                BottomSheetContent(currentSong!!)
+                onDismissRequest = { onHideBottomSheet() },
+                containerColor =  Color(0xFF101010),
+                dragHandle = {},
+
+                ) {
+                BottomSheetContent(currentBottomSheetSong!!)
             }
         }
     }
@@ -170,14 +429,15 @@ class MainActivity : ComponentActivity() {
     private fun BottomSheetContent(song: QuickPicksSong) {
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
+                .wrapContentHeight()
                 .background(Color.Transparent)
                 .padding(horizontal = 8.dp),
 
-        ) {
+            ) {
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
                     .background(Color(0xFF202020))
                     .padding(0.dp)
@@ -293,7 +553,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 0.dp, max = 400.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 0.dp, max = 400.dp),
                     horizontalAlignment = Alignment.Start,
                     verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
                 ) {
@@ -313,6 +575,8 @@ class MainActivity : ComponentActivity() {
                         BottomSheetItem(R.drawable.ic_go_to_artist, "Go to artist")
                     }
                 }
+
+                Spacer(modifier = Modifier.height(40.dp))
             }
         }
     }
@@ -320,7 +584,9 @@ class MainActivity : ComponentActivity() {
     @Composable
     private fun BottomSheetItem(icon: Int, title: String) {
         Row(
-            modifier = Modifier.fillMaxWidth().clickable {  },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { },
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -354,7 +620,7 @@ class MainActivity : ComponentActivity() {
                 colors = CardDefaults.cardColors(Color(0xFF303030)),
                 shape = RoundedCornerShape(8.dp),
 
-            ) {
+                ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -389,3 +655,4 @@ class MainActivity : ComponentActivity() {
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = false
     }
 }
+

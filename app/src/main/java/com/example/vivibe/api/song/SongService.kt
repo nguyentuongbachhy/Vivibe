@@ -41,4 +41,18 @@ class SongService(context: Context, token: String) {
             null
         }
     }
+
+    suspend fun fetchPlayingSong(songId: Int) : PlayingSongResponse? {
+        return try {
+            val response = api.fetchPlayingSong(songId)
+            if (response.isSuccessful) {
+                response.body()
+            } else {
+                null
+            }
+        }catch (e:Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }

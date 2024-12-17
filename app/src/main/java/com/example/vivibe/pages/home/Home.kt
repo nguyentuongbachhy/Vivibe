@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +32,7 @@ import coil.compose.rememberAsyncImagePainter
 import com.example.vivibe.QuickPicksSong
 import com.example.vivibe.R
 import com.example.vivibe.User
+import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.components.home.HomeComponent
 import com.example.vivibe.router.NotificationsRouter
 import com.example.vivibe.router.SearchRouter
@@ -40,11 +40,11 @@ import com.example.vivibe.router.TopAppBar
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
-class Home(context: Context) {
-    private val homeViewModel = HomeViewModel(context)
+class Home(appContext: Context, private val token: String, private val googleId: String, songClient: SongClient) {
+    private val homeViewModel = HomeViewModel(appContext, token, googleId, songClient)
 
     @Composable
-    fun HomeScreen(navController: NavController, onSongMoreClick: (QuickPicksSong) -> Unit) {
+    fun HomeScreen(navController: NavController, onSongMoreClick: (QuickPicksSong) -> Unit, onPlayMusicNavigate: (Int) -> Unit) {
         val isSignedIn = homeViewModel.isSignedIn.collectAsState()
         val user = homeViewModel.user.collectAsState()
         val showTokenExpiredDialog = homeViewModel.showTokenExpiredDialog.collectAsState()
@@ -56,7 +56,7 @@ class Home(context: Context) {
         val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing.value)
 
 
-        if (showTokenExpiredDialog.value) {
+        if (showTokenExpiredDialog.value || token.isBlank()) {
             AlertDialog(
                 onDismissRequest = {},
                 title = { Text(text = "Session Expired") },
@@ -74,7 +74,7 @@ class Home(context: Context) {
             )
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().padding(bottom = 64.dp).background(Color.Transparent)) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -98,28 +98,14 @@ class Home(context: Context) {
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         item {
-                            homeComponent.QuickPicksScreen(onSongMoreClick)
+                            homeComponent.QuickPicksScreen(onSongMoreClick, onPlayMusicNavigate)
                         }
 
                         item {
-                            homeComponent.SpeedDialScreen(user.value)
+                            homeComponent.SpeedDialScreen(user.value, onPlayMusicNavigate)
                         }
                     }
 
-                    if (isRefreshing.value) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .background(Color.Gray),
-                                color = Color.White
-                            )
-                        }
-                    }
                 }
             }
         }

@@ -18,6 +18,18 @@ data class SpeedDialSong(
     val thumbnailUrl: String,
 )
 
+data class PlaySong(
+    val id: Int,
+    val title: String,
+    val thumbnailUrl: String,
+    val artist: Artist,
+    val audio: String,
+    val lyrics: String,
+    val duration: Int,
+    val views: Int,
+    val likes: Int
+)
+
 data class QuickPicksSong(
     val id: Int,
     val title: String,

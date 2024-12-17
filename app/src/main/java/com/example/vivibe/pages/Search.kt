@@ -12,7 +12,7 @@ class Search {
     @Composable
     fun SearchScreen() {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color(0xFF202020)),
+            modifier = Modifier.fillMaxSize().background(Color(0xFF101010)),
         ) {
             Text(
                 text = "Search",

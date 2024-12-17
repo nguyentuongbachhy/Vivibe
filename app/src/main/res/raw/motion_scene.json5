@@ -1,0 +1,76 @@
+{
+  ConstraintSets: {
+    start: {
+      videoColumn: {
+        width: 'spread',
+        height: 'spread',
+        top: ['parent', 'top'],
+        bottom: ['navigationBar', 'top'],
+        start: ['parent', 'start'],
+        end: ['parent', 'end']
+      },
+      navigationBar: {
+        visibility: 'gone',
+      },
+      thumbnail: {
+        height: 48,
+        width: 56,
+        bottom: ['parent', 'bottom', 8],
+        start: ['parent', 'start', 16],
+      },
+      details: {
+        width: 'spread',
+        height: 'spread',
+        start: ['thumbnail', 'end', 8],
+        end: ['parent', 'end', 16],
+        top: ['thumbnail', 'top'],
+        bottom: ['thumbnail', 'bottom'],
+      },
+      content: {
+        width: 'spread',
+        height: 'spread',
+        start: ['parent', 'start'],
+        end: ['parent', 'end'],
+        top: ['thumbnail', 'bottom'],
+        bottom: ['parent', 'bottom', 8],
+      }
+    },
+    end: {
+      videoColumn: {
+        width: 'spread',
+        height: 'spread',
+        top: ['parent', 'top'],
+        bottom: ['navigationBar', 'top'],
+        start: ['parent', 'start'],
+        end: ['parent', 'end'],
+      },
+      navigationBar: {
+        top: ['parent', 'top'],
+        start: ['parent', 'start'],
+        end: ['parent', 'end'],
+        height: 'wrap',
+      },
+      thumbnail: {
+        width: 'spread',
+        height: 'wrap',
+        top: ['navigationBar', 'bottom', 16],
+        start: ['parent', 'start', 16],
+        end: ['parent', 'end', 16]
+      },
+      details: {
+        height: 'spread',
+        start: ['parent', 'end'],
+        top: ['thumbnail', 'top'],
+        bottom: ['thumbnail', 'bottom'],
+      },
+      content: {
+        width: 'spread',
+        height: 'spread',
+        start: ['parent', 'start'],
+        end: ['parent', 'end'],
+        top: ['thumbnail', 'bottom'],
+        bottom: ['parent', 'bottom']
+      }
+    }
+  }
+}
