@@ -7,8 +7,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,15 +33,19 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.ExperimentalMaterialApi
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.FractionalThreshold
+import androidx.compose.material.IconButton
 //noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.rememberSwipeableState
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.swipeable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -49,10 +53,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -86,6 +92,7 @@ import com.example.vivibe.pages.*
 import com.example.vivibe.pages.home.Home
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
@@ -104,6 +111,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             AppScreen()
         }
+    }
+
+    enum class PlayerState {
+        MINI, EXPANDED, TOP
     }
 
     @OptIn(ExperimentalAnimationApi::class)
@@ -404,6 +415,154 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    @OptIn(ExperimentalMaterialApi::class, ExperimentalMotionApi::class)
+    @Composable
+    fun EnhancedMotionPlayerLayout(
+        song: PlaySong,
+        modifier: Modifier
+    ) {
+        var currentState by remember { mutableStateOf(PlayerState.MINI) }
+        var motionProgress by remember { mutableFloatStateOf(0f) }
+
+        val swipeableState = rememberSwipeableState(
+            initialValue = PlayerState.MINI,
+            animationSpec = tween(300)
+        )
+
+        val context = LocalContext.current
+        val motionSceneContent = remember {
+            context.resources.openRawResource(R.raw.motion_scene)
+                .readBytes()
+                .decodeToString()
+        }
+
+        val density = LocalDensity.current
+        val configuration = LocalConfiguration.current
+        val screenHeight = with(density) {configuration.screenHeightDp.dp.toPx()}
+
+        val anchors = remember {
+            mapOf(
+                0f to PlayerState.MINI,
+                -screenHeight * 0.5f to PlayerState.EXPANDED,
+                -screenHeight to PlayerState.TOP
+            )
+        }
+
+        LaunchedEffect(song) {
+            if (swipeableState.currentValue == PlayerState.MINI) {
+                swipeableState.animateTo(PlayerState.EXPANDED)
+            }
+        }
+
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
+                .swipeable(
+                    state = swipeableState,
+                    anchors = anchors,
+                    thresholds = {_, _ -> FractionalThreshold(0.2f)},
+                    orientation = Orientation.Vertical
+                )
+        ) {
+//            LaunchedEffect(swipeableState.offset.value) {
+//                motionProgress = abs(swipeableState.offset.value / screenHeight)
+//
+//                currentState = when {
+//                    swipeableState.offset.value == 0f -> PlayerState.MINI
+//                    swipeableState.offset.value < -screenHeight * 0.5f -> PlayerState.TOP
+//                    else -> PlayerState.EXPANDED
+//                }
+//            }
+
+            MotionLayout(
+                motionScene = MotionScene(content = motionSceneContent),
+                progress = motionProgress,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF101010))
+            ) {
+                AsyncImage(
+                    model = song.thumbnailUrl,
+                    contentDescription = song.title,
+                    modifier = Modifier.layoutId("thumbnail"),
+                    contentScale = ContentScale.Crop
+                )
+
+                Column(
+                    modifier = Modifier.layoutId("details")
+                ) {
+                    Text(
+                        text = song.title,
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Text(
+                        text = song.artist.name,
+                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Row(
+                    modifier = Modifier.layoutId("navigationBar")
+                ) {
+                    IconButton(onClick = { /* Xử lý previous */ }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_skip_previous),
+                            contentDescription = "Previous"
+                        )
+                    }
+                    IconButton(onClick = { /* Xử lý play/pause */ }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_play_outline),
+                            contentDescription = "Play/Pause"
+                        )
+                    }
+                    IconButton(onClick = { /* Xử lý next */ }) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_skip_next),
+                            contentDescription = "Next"
+                        )
+                    }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .layoutId("content")
+                        .fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Chi tiết bài hát",
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        LaunchedEffect(swipeableState.offset.value) {
+            motionProgress = calculateProgress(
+                swipeableState.offset.value,
+                screenHeight
+            )
+
+            currentState = determineState(swipeableState.offset.value, screenHeight)
+        }
+    }
+
+
+    private fun calculateProgress(offset: Float, screenHeight: Float): Float {
+        return abs(offset / screenHeight)
+    }
+
+    private fun determineState(offset: Float, screenHeight: Float): PlayerState {
+        return when {
+            offset == 0f -> PlayerState.MINI
+            offset < -screenHeight * 0.5f -> PlayerState.TOP
+            else -> PlayerState.EXPANDED
+        }
+    }
+
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun BottomSheetArea(
@@ -655,4 +814,3 @@ class MainActivity : ComponentActivity() {
         WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars = false
     }
 }
-
