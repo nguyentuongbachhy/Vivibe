@@ -166,7 +166,7 @@ class Home(appContext: Context, private val token: String, private val googleId:
                 }
             } else {
                 IconButton(
-                    onClick = {},
+                    onClick = {homeViewModel.signOut()},
                     modifier = Modifier.size(24.dp)
                 ) {
                     user.value?.profilePictureUri?.let { uri ->
