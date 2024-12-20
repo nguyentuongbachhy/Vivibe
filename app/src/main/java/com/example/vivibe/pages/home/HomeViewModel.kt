@@ -3,7 +3,7 @@ package com.example.vivibe.pages.home
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vivibe.User
+import com.example.vivibe.model.User
 import com.example.vivibe.api.login.GoogleSignInClient
 import com.example.vivibe.api.login.GlobalStateManager
 import com.example.vivibe.api.song.SongClient

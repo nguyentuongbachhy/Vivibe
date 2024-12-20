@@ -1,10 +1,9 @@
 package com.example.vivibe.api.song
 
 import android.content.Context
-import com.example.vivibe.PlaySong
-import com.example.vivibe.QuickPicksSong
-import com.example.vivibe.SpeedDialSong
-import okhttp3.internal.wait
+import com.example.vivibe.model.PlaySong
+import com.example.vivibe.model.QuickPicksSong
+import com.example.vivibe.model.SpeedDialSong
 
 class SongClient(context: Context, token: String) {
     private val tag = "SongClient: "

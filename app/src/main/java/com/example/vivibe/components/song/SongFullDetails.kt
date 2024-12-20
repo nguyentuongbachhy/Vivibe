@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.vivibe.PlaySong
+import com.example.vivibe.model.PlaySong
 
 @Composable
 fun SongFullDetails(
@@ -29,7 +29,7 @@ fun SongFullDetails(
         Text(
             text = song.artist.name,
             color = Color.LightGray,
-            fontSize = 20.sp,
+            fontSize = 18.sp,
             fontWeight = FontWeight.Normal
         )
     }

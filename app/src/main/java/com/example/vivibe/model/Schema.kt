@@ -1,4 +1,4 @@
-package com.example.vivibe
+package com.example.vivibe.model
 
 data class User(
     val googleId: String?,

@@ -3,7 +3,7 @@ package com.example.vivibe.api.login
 import android.content.Context
 import android.util.Base64
 import com.example.vivibe.R
-import com.example.vivibe.User
+import com.example.vivibe.model.User
 import com.example.vivibe.api.RetrofitClient
 import org.json.JSONObject
 import java.io.File

@@ -1,48 +1,6 @@
 {
   "ConstraintSets": {
-    "mini": {
-      "navigationBar": {
-        "width": "spread",
-        "height": 0,
-        "visibility": "gone"
-      },
-      "thumbnail": {
-        "height": 48,
-        "width": 56,
-        "bottom": ["parent", "bottom", 8],
-        "start": ["parent", "start", 16]
-      },
-      "short": {
-        "width": "spread",
-        "height": "wrap",
-        "start": ["thumbnail", "end", 8],
-        "end": ["parent", "end", 16],
-        "top": ["thumbnail", "top"],
-        "bottom": ["thumbnail", "bottom", 8]
-      },
-      "details": {
-        "width": "spread",
-        "height": 0,
-        "visibility": "gone"
-      },
-      "track": {
-        "width": "spread",
-        "height": "wrap",
-        "start": ["parent", "start"],
-        "end": ["parent", "end"],
-        "bottom": ["parent", "bottom"],
-        "top": ["thumbnail", "bottom", 8]
-      },
-      "optionBar": {
-        "width": "spread",
-        "height": 0,
-        "visibility": "gone",
-        "start": ["parent", "start"],
-        "end": ["parent", "end"],
-        "bottom": ["parent", "bottom"]
-      }
-    },
-    "expanded": {
+    "start": {
       "navigationBar": {
         "top": ["parent", "top"],
         "start": ["parent", "start"],
@@ -86,7 +44,7 @@
         "bottom": ["parent", "bottom"]
       }
     },
-    "topBar": {
+    "end": {
       "navigationBar": {
         "width": "spread",
         "height": 0,
@@ -129,16 +87,18 @@
   },
   "Transitions": [
     {
-      "from": "mini",
+      "from": "MINI",
       "to": "expanded",
-      "pathMotionArc": "none",
-      "duration": 300
-    },
-    {
-      "from": "expanded",
-      "to": "topBar",
-      "pathMotionArc": "none",
-      "duration": 300
+      "keyFrames": {
+        "keyAttributes": [
+          {
+            "target": "optionBar",
+            "frames": [50, 100],
+            "height": [0, 72],
+            "visibility": ["gone", "visible"]
+          }
+        ]
+      }
     }
   ]
 }

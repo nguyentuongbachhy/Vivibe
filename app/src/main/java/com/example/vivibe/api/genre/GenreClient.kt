@@ -1,7 +1,7 @@
 package com.example.vivibe.api.genre
 
 import android.content.Context
-import com.example.vivibe.Genre
+import com.example.vivibe.model.Genre
 
 class GenreClient(private val context: Context, token: String) {
     private val tag = "GenreClient: "

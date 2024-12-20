@@ -1,6 +1,6 @@
 {
   "ConstraintSets": {
-    "mini": {
+    "start": {
       "navigationBar": {
         "width": "spread",
         "height": 0,
@@ -42,7 +42,7 @@
         "bottom": ["parent", "bottom"]
       }
     },
-    "expanded": {
+    "end": {
       "navigationBar": {
         "top": ["parent", "top"],
         "start": ["parent", "start"],
@@ -57,9 +57,7 @@
         "end": ["parent", "end", 16]
       },
       "short": {
-        "width": "spread",
-        "height": 0,
-        "visibility": "gone",
+        "height": "spread",
         "start": ["parent", "end"],
         "top": ["thumbnail", "top"],
         "bottom": ["thumbnail", "bottom"]
@@ -85,60 +83,6 @@
         "end": ["parent", "end"],
         "bottom": ["parent", "bottom"]
       }
-    },
-    "topBar": {
-      "navigationBar": {
-        "width": "spread",
-        "height": 0,
-        "visibility": "gone"
-      },
-      "thumbnail": {
-        "height": 48,
-        "width": 56,
-        "top": ["parent", "top", 8],
-        "start": ["parent", "start", 16]
-      },
-      "short": {
-        "width": "spread",
-        "height": "wrap",
-        "start": ["thumbnail", "end", 8],
-        "end": ["parent", "end", 16],
-        "top": ["thumbnail", "top"],
-        "bottom": ["thumbnail", "bottom", 8],
-      },
-      "details": {
-        "width": "spread",
-        "height": 0
-      },
-      "track": {
-        "width": "spread",
-        "height": 48,
-        "top": ["short", "bottom", 8],
-        "start": ["parent", "start"],
-        "end": ["parent", "end"],
-      },
-      "optionBar": {
-        "width": "spread",
-        "height": "wrap",
-        "start": ["parent", "start"],
-        "end": ["parent", "end"],
-        "bottom": ["parent", "bottom"],
-        "top": ["thumbnail", "bottom", 16]
-      }
     }
-  },
-  "Transitions": [
-    {
-      "from": "mini",
-      "to": "expanded",
-      "pathMotionArc": "none",
-      "duration": 300
-    },
-    {
-      "from": "expanded",
-      "to": "topBar",
-      "pathMotionArc": "none",
-      "duration": 300
-    }
-  ]
+  }
 }

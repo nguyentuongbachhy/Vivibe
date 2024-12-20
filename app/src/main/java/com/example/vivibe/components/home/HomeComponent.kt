@@ -47,10 +47,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.example.vivibe.Genre
-import com.example.vivibe.QuickPicksSong
+import com.example.vivibe.model.Genre
+import com.example.vivibe.model.QuickPicksSong
 import com.example.vivibe.R
-import com.example.vivibe.User
+import com.example.vivibe.model.User
 
 class HomeComponent(private val viewModel: HomeComponentViewModel) {
     @Composable

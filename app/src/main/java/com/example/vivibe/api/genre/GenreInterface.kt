@@ -1,6 +1,6 @@
 package com.example.vivibe.api.genre
 
-import com.example.vivibe.Genre
+import com.example.vivibe.model.Genre
 import retrofit2.Response
 import retrofit2.http.GET
 

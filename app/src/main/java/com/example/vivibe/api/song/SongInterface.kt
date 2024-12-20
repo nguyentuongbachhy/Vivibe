@@ -1,8 +1,8 @@
 package com.example.vivibe.api.song
 
-import com.example.vivibe.PlaySong
-import com.example.vivibe.QuickPicksSong
-import com.example.vivibe.SpeedDialSong
+import com.example.vivibe.model.PlaySong
+import com.example.vivibe.model.QuickPicksSong
+import com.example.vivibe.model.SpeedDialSong
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET

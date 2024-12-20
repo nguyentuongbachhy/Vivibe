@@ -29,9 +29,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
-import com.example.vivibe.QuickPicksSong
+import com.example.vivibe.model.QuickPicksSong
 import com.example.vivibe.R
-import com.example.vivibe.User
+import com.example.vivibe.model.User
 import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.components.home.HomeComponent
 import com.example.vivibe.router.NotificationsRouter
@@ -56,7 +56,7 @@ class Home(appContext: Context, private val token: String, private val googleId:
         val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing.value)
 
 
-        if (showTokenExpiredDialog.value || token.isBlank()) {
+        if (showTokenExpiredDialog.value) {
             AlertDialog(
                 onDismissRequest = {},
                 title = { Text(text = "Session Expired") },

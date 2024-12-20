@@ -3,9 +3,9 @@ package com.example.vivibe.components.home
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vivibe.Genre
-import com.example.vivibe.QuickPicksSong
-import com.example.vivibe.SpeedDialSong
+import com.example.vivibe.model.Genre
+import com.example.vivibe.model.QuickPicksSong
+import com.example.vivibe.model.SpeedDialSong
 import com.example.vivibe.api.genre.GenreClient
 import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.database.DatabaseHelper

@@ -1,5 +1,6 @@
 package com.example.vivibe
 
+import com.example.vivibe.model.QuickPicksSong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 

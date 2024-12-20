@@ -5,7 +5,8 @@ import android.util.Base64
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vivibe.api.song.SongClient
-import com.example.vivibe.database.DatabaseHelper
+import com.example.vivibe.model.PlaySong
+import com.example.vivibe.model.QuickPicksSong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
