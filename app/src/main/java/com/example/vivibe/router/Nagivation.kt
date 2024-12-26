@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -17,8 +16,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,7 +58,7 @@ fun TopAppBar(actions: @Composable () -> Unit) {
 }
 
 @Composable
-fun BottomNavigation(navController: NavController) {
+fun BottomNavigation(navController: NavController, modifier: Modifier) {
     val items = listOf(
         HomeRouter,
         SamplesRouter,
@@ -73,7 +70,7 @@ fun BottomNavigation(navController: NavController) {
     val currentRoute = currentDestination?.route
 
     NavigationBar(
-        modifier = Modifier.defaultMinSize(minHeight = 64.dp),
+        modifier = modifier.defaultMinSize(minHeight = 64.dp),
         containerColor = Color(0xFF101010),
     ) {
         items.forEach{item ->

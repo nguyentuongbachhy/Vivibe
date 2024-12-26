@@ -9,17 +9,18 @@ import com.example.vivibe.model.SpeedDialSong
 import com.example.vivibe.api.genre.GenreClient
 import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.database.DatabaseHelper
+import com.example.vivibe.manager.GlobalStateManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 class HomeComponentViewModel(
     appContext: Context,
-    token: String,
-    private val googleId: String,
-    private val songClient: SongClient,
+    private val songClient: SongClient
 ): ViewModel() {
-    private val genreClient = GenreClient(appContext, token)
+    private val user = GlobalStateManager.userState.value
+
+    private val genreClient = GenreClient(appContext, user.token!!)
     private val dbHelper = DatabaseHelper(appContext)
 
     private val _speedDial = MutableStateFlow<List<SpeedDialSong>>(emptyList())
@@ -62,17 +63,21 @@ class HomeComponentViewModel(
 
     fun fetchQuickPicks() {
         viewModelScope.launch {
-            try {
-                val songIds = dbHelper.getTopSongs(googleId, limit = 20)
-                val fetchedSongs = songClient.fetchQuickPickSongs(songIds)
-                if(fetchedSongs.isNotEmpty()) {
-                    _quickPicks.value = fetchedSongs
-                    println("Quick picks fetched successfully")
-                } else {
-                    println("No quick picks fetched")
+            if(user.googleId!!.isBlank()) {
+                _quickPicks.value = emptyList()
+            } else {
+                try {
+                    val songIds = dbHelper.getTopSongs(user.googleId, limit = 20)
+                    val fetchedSongs = songClient.fetchQuickPickSongs(songIds)
+                    if(fetchedSongs.isNotEmpty()) {
+                        _quickPicks.value = fetchedSongs
+                        println("Quick picks fetched successfully")
+                    } else {
+                        println("No quick picks fetched")
+                    }
+                } catch (e: Exception) {
+                    println("Error fetching quick picks: ${e.message}")
                 }
-            } catch (e: Exception) {
-                println("Error fetching quick picks: ${e.message}")
             }
         }
     }
@@ -94,6 +99,6 @@ class HomeComponentViewModel(
     }
 
     fun updatePlayHistory(songId: Int) {
-        dbHelper.insertOrUpdateSongPlayHistory(songId, googleId)
+        dbHelper.insertOrUpdateSongPlayHistory(songId, user.googleId!!)
     }
 }

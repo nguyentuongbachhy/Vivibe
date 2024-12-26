@@ -1,6 +1,7 @@
 package com.example.vivibe.model
 
 data class User(
+    val token: String?,
     val googleId: String?,
     val name: String?,
     val email: String?,

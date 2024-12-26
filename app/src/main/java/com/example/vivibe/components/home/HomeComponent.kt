@@ -349,25 +349,34 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = user?.profilePictureUri,
-                contentDescription = user?.name,
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape),
-            )
-
-            Column(
-                modifier = Modifier.fillMaxHeight(),
-                horizontalAlignment = Alignment.Start,
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = user?.name ?: "",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    color = Color.LightGray
+            if(user != User("", "", "", "", "")) {
+                AsyncImage(
+                    model = user?.profilePictureUri,
+                    contentDescription = user?.name,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
                 )
+
+                Column(
+                    modifier = Modifier.fillMaxHeight(),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = user?.name ?: "",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        color = Color.LightGray
+                    )
+                    Text(
+                        text = "Speed dial",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            } else {
                 Text(
                     text = "Speed dial",
                     fontSize = 18.sp,

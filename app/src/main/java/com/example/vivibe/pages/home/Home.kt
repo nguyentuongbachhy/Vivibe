@@ -1,5 +1,6 @@
 package com.example.vivibe.pages.home
 
+import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,6 +21,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,19 +37,21 @@ import com.example.vivibe.R
 import com.example.vivibe.model.User
 import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.components.home.HomeComponent
+import com.example.vivibe.manager.GlobalStateManager
 import com.example.vivibe.router.NotificationsRouter
 import com.example.vivibe.router.SearchRouter
 import com.example.vivibe.router.TopAppBar
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import kotlinx.coroutines.delay
 
-class Home(appContext: Context, private val token: String, private val googleId: String, songClient: SongClient) {
-    private val homeViewModel = HomeViewModel(appContext, token, googleId, songClient)
+class Home(appContext: Context, songClient: SongClient) {
+    private val user = GlobalStateManager.userState
+    private val homeViewModel = HomeViewModel(appContext, songClient)
 
+    @SuppressLint("StateFlowValueCalledInComposition")
     @Composable
     fun HomeScreen(navController: NavController, onSongMoreClick: (QuickPicksSong) -> Unit, onPlayMusicNavigate: (Int) -> Unit) {
-        val isSignedIn = homeViewModel.isSignedIn.collectAsState()
-        val user = homeViewModel.user.collectAsState()
         val showTokenExpiredDialog = homeViewModel.showTokenExpiredDialog.collectAsState()
         val homeComponentViewModel = homeViewModel.homeComponentViewModel.collectAsState()
         val isRefreshing = homeViewModel.isRefreshing.collectAsState()
@@ -66,6 +71,7 @@ class Home(appContext: Context, private val token: String, private val googleId:
                         onClick = {
                             homeViewModel.dismissTokenExpiredDialog()
                             homeViewModel.signOut()
+                            homeViewModel.reload()
                         }
                     ) {
                         Text(text = "OK")
@@ -82,7 +88,7 @@ class Home(appContext: Context, private val token: String, private val googleId:
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                TopAppBar { HomeActions(navController, isSignedIn, user, homeViewModel) }
+                TopAppBar { HomeActions(navController, user.value, homeViewModel) }
 
                 homeComponent.GenresScreen()
 
@@ -114,8 +120,7 @@ class Home(appContext: Context, private val token: String, private val googleId:
     @Composable
     private fun HomeActions(
         navController: NavController,
-        isSignedIn: State<Boolean>,
-        user: State<User?>,
+        user: User?,
         homeViewModel: HomeViewModel
     ) {
         Row(
@@ -151,9 +156,12 @@ class Home(appContext: Context, private val token: String, private val googleId:
                 )
             }
 
-            if (!isSignedIn.value) {
+            if (user == User("", "", "", "", "")) {
                 IconButton(
-                    onClick = { homeViewModel.signIn() },
+                    onClick = {
+                        homeViewModel.signIn()
+                        homeViewModel.reload()
+                    },
                     modifier = Modifier.size(24.dp)
                 ) {
                     Image(
@@ -166,10 +174,13 @@ class Home(appContext: Context, private val token: String, private val googleId:
                 }
             } else {
                 IconButton(
-                    onClick = {homeViewModel.signOut()},
+                    onClick = {
+                        homeViewModel.signOut()
+                        homeViewModel.reload()
+                    },
                     modifier = Modifier.size(24.dp)
                 ) {
-                    user.value?.profilePictureUri?.let { uri ->
+                    user?.profilePictureUri?.let { uri ->
                         Image(
                             painter = rememberAsyncImagePainter(model = uri),
                             contentDescription = "User Profile",

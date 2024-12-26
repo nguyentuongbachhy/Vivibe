@@ -8,6 +8,7 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.GetCredentialResponse
 import com.example.vivibe.R
+import com.example.vivibe.manager.GlobalStateManager
 import com.example.vivibe.model.User
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
@@ -29,11 +30,8 @@ class GoogleSignInClient(
     private val firebaseAuth = FirebaseAuth.getInstance()
     private val googleLoginService = GoogleLoginService(context)
 
-    var user: User? = null
-
-
-    fun isSignedIn(): Boolean {
-        if (firebaseAuth.currentUser != null) {
+    private fun isSignedIn(): Boolean {
+        if (firebaseAuth.currentUser != null && GlobalStateManager.userState.value != User("", "", "", "", "")) {
             println(tag + "already signed in")
             return true
         }
@@ -44,14 +42,10 @@ class GoogleSignInClient(
         return Base64.encodeToString(data.toByteArray(Charsets.UTF_8), Base64.DEFAULT)
     }
 
-    private fun decode(encodedData: String): String {
-        return String(Base64.decode(encodedData, Base64.DEFAULT), Charsets.UTF_8)
-    }
-
-    private fun saveUserDataToFile(token: String, user: User) {
+    private fun saveUserDataToFile(user: User) {
         try {
             val userData = JSONObject().apply {
-                put("token", token)
+                put("token", user.token)
                 put("googleId", user.googleId)
                 put("name", user.name)
                 put("email", user.email)
@@ -64,39 +58,6 @@ class GoogleSignInClient(
             println("$tag User data saved successfully.")
         } catch (e: Exception) {
             println("$tag Error saving user data to file: ${e.message}")
-        }
-    }
-
-    fun loadUserDataFromFile(): User? {
-        try {
-            val file = File(context.filesDir, "user_info.json")
-
-            if(!file.exists()) {
-                println("$tag User data file not found")
-                return null
-            }
-
-            val obfuscatedContent = file.readText()
-            val content = decode(obfuscatedContent)
-            val userData = JSONObject(content)
-
-            val googleId = userData.optString("googleId")
-            val name = userData.optString("name")
-            val email = userData.optString("email")
-            val profilePictureUri = userData.optString("profilePictureUri")
-
-            if (googleId.isBlank() || name.isBlank() || email.isBlank()) {
-                println("$tag Missing required user data.")
-                return null
-            }
-
-            println("$tag Loaded user data: Google ID=$googleId, Name=$name, Email=$email")
-
-
-            return User(googleId, name, email, profilePictureUri)
-        } catch (e: Exception) {
-            println("$tag Error loading user data from file: ${e.message}")
-            return null
         }
     }
 
@@ -152,36 +113,35 @@ class GoogleSignInClient(
         if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
             try {
                 val tokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
-                val idToken: String = tokenCredential.idToken
 
-                if (idToken.isEmpty()) {
-                    println(tag + "handleSignIn error: Missing ID token")
-                    return false
-                }
-
-                val authCredential = GoogleAuthProvider.getCredential(idToken, null)
+                val authCredential = GoogleAuthProvider.getCredential(tokenCredential.idToken, null)
                 val authResult = firebaseAuth.signInWithCredential(authCredential).await()
 
                 val googleId = authResult.user?.providerData
                     ?.firstOrNull { it.providerId == "google.com" }
                     ?.uid
 
-                authResult.user?.let {
-                    user = User(
-                        googleId = googleId,
-                        name = it.displayName,
-                        email = it.email,
-                        profilePictureUri = it.photoUrl?.toString()
-                    )
-                }
+                val user = User(
+                    token = "",
+                    googleId = googleId,
+                    name = authResult.user?.displayName ?: "",
+                    email = authResult.user?.email ?: "",
+                    profilePictureUri = authResult.user?.photoUrl.toString()
+                )
 
-                refreshIdToken()
-
-                val serverResponse = googleLoginWithServer(user!!)
+                val serverResponse = googleLoginWithServer(user)
 
                 if (serverResponse?.err == 0) {
                     val token: String = serverResponse.token!!
-                    saveUserDataToFile(token, user!!)
+                    val updatedUser = User(
+                        token = token,
+                        googleId = user.googleId,
+                        name = user.name,
+                        email = user.email,
+                        profilePictureUri = user.profilePictureUri
+                    )
+                    saveUserDataToFile(updatedUser)
+                    GlobalStateManager.updateUser(updatedUser)
                     println("$tag User signed in successfully")
                 }
 
@@ -197,29 +157,14 @@ class GoogleSignInClient(
         }
     }
 
-    private fun refreshIdToken() {
-        firebaseAuth.currentUser?.getIdToken(true)?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val newToken = task.result?.token
-                println("$tag New token: $newToken")
-
-                val sharedPreferences = context.getSharedPreferences("user_info", Context.MODE_PRIVATE)
-                sharedPreferences.edit().putString("token", newToken).apply()
-            } else {
-                println("$tag Failed to refresh token: ${task.exception?.message}")
-            }
-        }
-    }
-
     suspend fun signOut() {
         try {
             credentialManager.clearCredentialState(
                 ClearCredentialStateRequest()
             )
             firebaseAuth.signOut()
-            user = null
-
             deleteUserDataFile()
+             GlobalStateManager.updateUser(User("", "", "", "", ""))
         } catch (e: Exception) {
             println(tag + "Error clearing credentials: ${e.message}")
         }

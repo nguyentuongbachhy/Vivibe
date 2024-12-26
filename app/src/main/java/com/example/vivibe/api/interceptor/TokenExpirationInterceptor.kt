@@ -1,6 +1,6 @@
 package com.example.vivibe.api.interceptor
 
-import com.example.vivibe.api.login.GlobalStateManager
+import com.example.vivibe.manager.GlobalStateManager
 import okhttp3.Interceptor
 import okhttp3.Response
 
