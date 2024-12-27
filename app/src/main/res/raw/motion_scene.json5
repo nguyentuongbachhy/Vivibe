@@ -1,28 +1,38 @@
 {
   "ConstraintSets": {
-    "mini": {
+    "initial": {
+      "bottomNavigation": {
+        "width": "spread",
+        "height": 64,
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "bottom": ["parent", "bottom"],
+        "visibility": "visible"
+      },
       "navigationBar": {
         "width": "spread",
         "height": 0,
+        "alpha": 0,
         "visibility": "gone"
       },
       "thumbnail": {
         "width": 56,
         "height": 48,
         "start": ["parent", "start", 16],
-        "bottom": ["parent", "bottom", 8]
+        "bottom": ["bottomNavigation", "top", 8]
       },
       "short": {
         "width": "spread",
-        "height": "wrap",
+        "height": 48,
         "start": ["thumbnail", "end", 8],
         "end": ["parent", "end", 16],
-        "top": ["thumbnail", "top"],
-        "bottom": ["thumbnail", "bottom", 8]
+        "bottom": ["bottomNavigation", "top", 8],
+        "visibility": "visible"
       },
       "details": {
         "width": "spread",
         "height": 0,
+        "alpha": 0,
         "visibility": "gone"
       },
       "track": {
@@ -30,17 +40,30 @@
         "height": "wrap",
         "start": ["parent", "start"],
         "end": ["parent", "end"],
-        "bottom": ["parent", "bottom"],
-        "top": ["thumbnail", "bottom", 8]
+        "top": ["thumbnail", "bottom", 8],
+        "visibility": "visible"
+      },
+      "dragHandle": {
+        "width": "spread",
+        "height": 0,
+        "alpha": 0,
+        "visibility": "gone"
       }
     },
-    "expanded": {
+    "start": {
+      "bottomNavigation": {
+        "width": "spread",
+        "height": 0,
+        "alpha": 0,
+        "visibility": "gone"
+      },
       "navigationBar": {
         "width": "spread",
         "height": "wrap",
         "start": ["parent", "start"],
         "end": ["parent", "end"],
-        "top": ["parent", "top"]
+        "top": ["parent", "top"],
+        "visibility": "visible"
       },
       "thumbnail": {
         "width": "spread",
@@ -50,8 +73,9 @@
         "top": ["navigationBar", "bottom", 16]
       },
       "short": {
-        "width": "spread",
+        "width": 0,
         "height": 0,
+        "alpha": 0,
         "visibility": "gone"
       },
       "details": {
@@ -59,38 +83,56 @@
         "height": "spread",
         "start": ["parent", "start"],
         "end": ["parent", "end"],
-        "top": ["thumbnail", "bottom", 32],
-        "bottom": ["parent", "bottom", 48]
+        "top": ["thumbnail", "bottom", 16],
+        "bottom": ["parent", "bottom"],
+        "visibility": "visible"
       },
       "track": {
-        "width": "spread",
-        "height": "0",
+        "width": 0,
+        "height": 0,
+        "alpha": 0,
         "visibility": "gone"
+      },
+      "dragHandle": {
+        "width": "spread",
+        "height": 64,
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "bottom": ["parent", "bottom"],
+        "visibility": "visible"
       }
     },
-    "topBar": {
+    "end": {
+      "bottomNavigation": {
+        "width": "spread",
+        "height": 0,
+        "alpha": 0,
+        "visibility": "gone"
+      },
       "navigationBar": {
         "width": "spread",
         "height": 0,
+        "alpha": 0,
         "visibility": "gone"
       },
       "thumbnail": {
-        "height": 48,
         "width": 56,
+        "height": 48,
         "start": ["parent", "start", 16],
-        "top": ["parent", "top", 8]
+        "bottom": ["parent", "top", 8]
       },
       "short": {
         "width": "spread",
-        "height": "wrap",
+        "height": 48,
         "start": ["thumbnail", "end", 8],
         "end": ["parent", "end", 16],
-        "top": ["thumbnail", "top"],
-        "bottom": ["thumbnail", "bottom", 8]
+        "bottom": ["parent", "top", 8],
+        "visibility": "visible"
       },
       "details": {
         "width": "spread",
         "height": 0,
+        "alpha": 0,
         "visibility": "gone"
       },
       "track": {
@@ -98,28 +140,18 @@
         "height": "wrap",
         "start": ["parent", "start"],
         "end": ["parent", "end"],
-        "top": ["short", "bottom", 8]
+        "top": ["thumbnail", "bottom", 8],
+        "visibility": "visible"
+      },
+      "dragHandle": {
+        "width": "spread",
+        "height": "spread",
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "top": ["thumbnail", "bottom", 16],
+        "bottom": ["parent", "bottom"],
+        "visibility": "visible"
       }
     }
   },
-  "Transitions": [
-    {
-      "from": "mini",
-      "to": "expanded",
-      "pathMotionArc": "none",
-      "duration": 300,
-      "KeyFrames": {
-        "KeyPositions": []
-      }
-    },
-    {
-      "from": "expanded",
-      "to": "topBar",
-      "pathMotionArc": "none",
-      "duration": 300,
-      "KeyFrames": {
-        "KeyPositions": []
-      }
-    }
-  ]
 }

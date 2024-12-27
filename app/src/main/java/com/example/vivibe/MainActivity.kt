@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -145,7 +146,7 @@ class MainActivity : ComponentActivity() {
             AppScreen()
         }
     }
-    
+
     @OptIn(ExperimentalCoroutinesApi::class)
     @SuppressLint("CoroutineCreationDuringComposition")
     @Composable
@@ -191,6 +192,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .padding(innerPadding)
                             .fillMaxSize()
+                            .zIndex(0f)
                             .background(Color.Transparent)
                     ) {
                         NavHost(
@@ -250,12 +252,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
             saveableStateHolder.SaveableStateProvider("Player") {
-                    Player(
-                        currentSong = currentSong.value,
-                        navController = navController,
-                        viewModel = viewModel,
-                        modifier = Modifier.fillMaxSize()
-                    )
+                Player(
+                    currentSong = currentSong.value,
+                    navController = navController,
+                    viewModel = viewModel,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
 
@@ -306,9 +308,9 @@ class MainActivity : ComponentActivity() {
         }
 
         LaunchedEffect(currentSong) {
-            if(swipeableState.currentValue == PlayerState.MINI) {
+            if(currentSong != null && swipeableState.currentValue == PlayerState.MINI) {
                 swipeableState.animateTo(PlayerState.EXPANDED)
-                val mediaItem = MediaItem.fromUri(currentSong!!.audio)
+                val mediaItem = MediaItem.fromUri(currentSong.audio)
                 exoPlayer.setMediaItem(mediaItem)
                 exoPlayer.prepare()
                 exoPlayer.play()
@@ -355,6 +357,11 @@ class MainActivity : ComponentActivity() {
             while (true) {
                 currentPosition.longValue = exoPlayer.currentPosition
                 totalDuration.longValue = exoPlayer.duration
+                if (exoPlayer.playerError != null ||
+                    (exoPlayer.currentPosition >= exoPlayer.duration && exoPlayer.duration > 0)) {
+                    isPlaying.value = false
+                }
+
                 delay(500L)
             }
         }
@@ -371,8 +378,8 @@ class MainActivity : ComponentActivity() {
 
         Box(
             modifier = modifier
-                .fillMaxSize()
                 .background(progressColor(progress))
+
         ) {
             MotionLayout(
                 motionScene = MotionScene(content = motionSceneContent),
@@ -385,7 +392,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier
                         .layoutId("bottomNavigation")
                         .alpha((1f - progress) * (1f - progress))
-                        .zIndex(if (currentSong == null) 2f else 0f),
+                        .zIndex(2f),
                     navController = navController
                 )
 
@@ -395,6 +402,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxWidth()
                             .layoutId("navigationBar")
                             .padding(8.dp)
+                            .zIndex(2f * progress)
                             .alpha(progress * progress),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -453,7 +461,7 @@ class MainActivity : ComponentActivity() {
                                     swipeableState.animateTo(PlayerState.EXPANDED)
                                 }
                             }
-                            .zIndex(1f)
+                            .zIndex(2f)
                             .swipeable(
                                 state = swipeableState,
                                 anchors = anchors,
@@ -485,7 +493,7 @@ class MainActivity : ComponentActivity() {
                             }
                             .alpha((1f - progress) * (1f - progress))
                             .layoutId("short")
-                            .zIndex(1f),
+                            .zIndex(2f),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -556,7 +564,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .alpha(1.25f * (progress - 0.8f) * (progress - 1f))
-                            .zIndex(1f)
+                            .zIndex(2f)
                             .layoutId("track")
                     ) {
                         ProgressBarShort(
@@ -570,7 +578,7 @@ class MainActivity : ComponentActivity() {
                             .background(Color.Transparent)
                             .alpha(progress * progress)
                             .layoutId("details")
-                            .zIndex(1f)
+                            .zIndex(2f)
                     ) {
                         SongFullDetails(
                             song = currentSong,
