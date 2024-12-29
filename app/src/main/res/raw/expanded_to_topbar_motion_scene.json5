@@ -1,0 +1,66 @@
+{
+  "ConstraintSets": {
+    "start": {
+      "thumbnail": {
+        "width": "spread",
+        "height": "wrap",
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "top": ["parent", "top", 48]
+      },
+      "short": {
+        "width": 0,
+        "height": 0,
+        "alpha": 0,
+        "visibility": "gone"
+      },
+      "track": {
+        "width": 0,
+        "height": 0,
+        "alpha": 0,
+        "visibility": "gone"
+      },
+      "anchorDraggable": {
+        "width": "spread",
+        "height": 64,
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "bottom": ["parent", "bottom"],
+        "visibility": "visible"
+      }
+    },
+    "end": {
+      "thumbnail": {
+        "width": 56,
+        "height": 48,
+        "start": ["parent", "start", 16],
+        "top": ["parent", "top", 8]
+      },
+      "short": {
+        "width": "spread",
+        "height": 48,
+        "start": ["thumbnail", "end", 8],
+        "end": ["parent", "end", 16],
+        "top": ["parent", "top", 8],
+        "visibility": "visible"
+      },
+      "track": {
+        "width": "spread",
+        "height": "wrap",
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "top": ["thumbnail", "bottom", 8],
+        "visibility": "visible"
+      },
+      "anchorDraggable": {
+        "width": "spread",
+        "height": "spread",
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "top": ["thumbnail", "bottom", 8],
+        "bottom": ["parent", "bottom"],
+        "visibility": "visible"
+      }
+    }
+  },
+}

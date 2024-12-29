@@ -5,7 +5,8 @@ data class User(
     val googleId: String?,
     val name: String?,
     val email: String?,
-    val profilePictureUri: String?
+    val profilePictureUri: String?,
+    val premium: Int
 )
 
 data class Artist(
@@ -26,9 +27,9 @@ data class PlaySong(
     val artist: Artist,
     val audio: String,
     val lyrics: String,
-    val duration: Int,
     val views: Int,
-    val likes: Int
+    val likes: Int,
+    val dominantColor: Int
 )
 
 data class QuickPicksSong(

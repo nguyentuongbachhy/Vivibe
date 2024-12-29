@@ -12,7 +12,8 @@ data class GoogleLoginRequest(
 data class GoogleLoginResponse(
     val err: Int,
     val msg: String,
-    val token: String? = null
+    val token: String? = null,
+    val premium: Int
 )
 
 interface GoogleLoginInterface {

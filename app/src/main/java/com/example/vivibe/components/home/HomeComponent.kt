@@ -349,7 +349,7 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.Start),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if(user != User("", "", "", "", "")) {
+            if(user != User("", "", "", "", "", 0)) {
                 AsyncImage(
                     model = user?.profilePictureUri,
                     contentDescription = user?.name,

@@ -17,9 +17,6 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
-import org.json.JSONObject
-import java.io.File
-
 
 
 class GoogleSignInClient(
@@ -31,46 +28,11 @@ class GoogleSignInClient(
     private val googleLoginService = GoogleLoginService(context)
 
     private fun isSignedIn(): Boolean {
-        if (firebaseAuth.currentUser != null && GlobalStateManager.userState.value != User("", "", "", "", "")) {
+        if (firebaseAuth.currentUser != null && GlobalStateManager.userState.value != User("", "", "", "", "", 0)) {
             println(tag + "already signed in")
             return true
         }
         return false
-    }
-
-    private fun encode(data: String): String {
-        return Base64.encodeToString(data.toByteArray(Charsets.UTF_8), Base64.DEFAULT)
-    }
-
-    private fun saveUserDataToFile(user: User) {
-        try {
-            val userData = JSONObject().apply {
-                put("token", user.token)
-                put("googleId", user.googleId)
-                put("name", user.name)
-                put("email", user.email)
-                put("profilePictureUri", user.profilePictureUri)
-            }
-
-            val obfuscatedData = encode(userData.toString())
-            val file = File(context.filesDir, "user_info.json")
-            file.writeText(obfuscatedData)
-            println("$tag User data saved successfully.")
-        } catch (e: Exception) {
-            println("$tag Error saving user data to file: ${e.message}")
-        }
-    }
-
-    private fun deleteUserDataFile() {
-        try {
-            val file = File(context.filesDir, "user_info.json")
-            if(file.exists()) {
-                val success = file.delete()
-                println("User data file deleted: $success")
-            }
-        } catch (e: Exception) {
-            print(tag + "Error deleting user data file: ${e.message}")
-        }
     }
 
     private suspend fun buildCredentialRequest(): GetCredentialResponse {
@@ -126,22 +88,24 @@ class GoogleSignInClient(
                     googleId = googleId,
                     name = authResult.user?.displayName ?: "",
                     email = authResult.user?.email ?: "",
-                    profilePictureUri = authResult.user?.photoUrl.toString()
+                    profilePictureUri = authResult.user?.photoUrl.toString(),
+                    premium = 0
                 )
 
                 val serverResponse = googleLoginWithServer(user)
 
                 if (serverResponse?.err == 0) {
+                    println("$tag server response: ${serverResponse.premium}")
                     val token: String = serverResponse.token!!
                     val updatedUser = User(
                         token = token,
                         googleId = user.googleId,
                         name = user.name,
                         email = user.email,
-                        profilePictureUri = user.profilePictureUri
+                        profilePictureUri = user.profilePictureUri,
+                        premium = serverResponse.premium
                     )
-                    saveUserDataToFile(updatedUser)
-                    GlobalStateManager.updateUser(updatedUser)
+                    GlobalStateManager.saveUserDataToFile(context, updatedUser)
                     println("$tag User signed in successfully")
                 }
 
@@ -157,16 +121,17 @@ class GoogleSignInClient(
         }
     }
 
-    suspend fun signOut() {
+    suspend fun signOut(): Boolean {
         try {
             credentialManager.clearCredentialState(
                 ClearCredentialStateRequest()
             )
             firebaseAuth.signOut()
-            deleteUserDataFile()
-             GlobalStateManager.updateUser(User("", "", "", "", ""))
+             GlobalStateManager.deleteUserDataFile(context)
+            return true
         } catch (e: Exception) {
             println(tag + "Error clearing credentials: ${e.message}")
+            return false
         }
     }
 }

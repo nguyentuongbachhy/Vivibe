@@ -61,18 +61,15 @@ class HomeViewModel(appContext: Context, songClient: SongClient) : ViewModel() {
         _showTokenExpiredDialog.value = false
     }
 
-    fun signIn() {
-        viewModelScope.launch {
-            val success = googleAuthClient.signIn()
-            if (success) {
-                GlobalStateManager.resetTokenExpired()
-            }
+    suspend fun signIn(): Boolean {
+        val success = googleAuthClient.signIn()
+        if (success) {
+            GlobalStateManager.resetTokenExpired()
         }
+        return success
     }
 
-    fun signOut() {
-        viewModelScope.launch {
-            googleAuthClient.signOut()
-        }
+    suspend fun signOut(): Boolean {
+         return googleAuthClient.signOut()
     }
 }

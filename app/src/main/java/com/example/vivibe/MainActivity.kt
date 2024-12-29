@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -52,29 +53,25 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -89,20 +86,19 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.compose.ui.zIndex
 import androidx.constraintlayout.compose.ExperimentalMotionApi
 import androidx.constraintlayout.compose.MotionLayout
 import androidx.constraintlayout.compose.MotionScene
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -110,26 +106,24 @@ import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.example.vivibe.components.song.SongFullDetails
 import com.example.vivibe.manager.GlobalStateManager
+import com.example.vivibe.manager.SharedExoPlayer
 import com.example.vivibe.model.PlaySong
 import com.example.vivibe.model.QuickPicksSong
 import com.example.vivibe.router.*
 import com.example.vivibe.pages.*
 import com.example.vivibe.pages.home.Home
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.transformLatest
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.pow
 
 class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by lazy {
         ViewModelProvider(this, MainViewModelFactory(applicationContext))[MainViewModel::class.java]
     }
-
-    private val localPlayerProgress = compositionLocalOf { 0f }
-
 
     enum class PlayerState {
         MINI, EXPANDED, TOP_BAR
@@ -138,10 +132,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-
         makeStatusBarTransparent()
-
-
         setContent {
             AppScreen()
         }
@@ -151,12 +142,11 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("CoroutineCreationDuringComposition")
     @Composable
     private fun AppScreen() {
-        val context = LocalContext.current
         val scope = rememberCoroutineScope()
         val navController = rememberNavController()
         val saveableStateHolder = rememberSaveableStateHolder()
         val currentSong = remember {
-            viewModel.playingSong.transformLatest { value ->
+            viewModel.currentSong.transformLatest { value ->
                 emit(value)
             }.stateIn(
                 scope = scope,
@@ -166,21 +156,15 @@ class MainActivity : ComponentActivity() {
         }.collectAsState()
 
 
-        GlobalStateManager.loadUserFromFile(context)
-
         Box(modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF101010))
             .windowInsetsPadding(WindowInsets.statusBars)
             .windowInsetsPadding(WindowInsets.navigationBars)
         ) {
-            val progress = localPlayerProgress.current
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer {
-                        alpha = (1f - progress) * (1f - progress)
-                    }
             ) {
                 Scaffold(
                     modifier = Modifier.padding(
@@ -280,118 +264,103 @@ class MainActivity : ComponentActivity() {
         val density = LocalDensity.current
         val configuration = LocalConfiguration.current
         val scope = rememberCoroutineScope()
+        val lifecycleOwner = LocalLifecycleOwner.current
+
+        val isPlaying by viewModel.isPlaying.collectAsState()
+        val currentPosition by viewModel.currentPosition.collectAsState()
+        val duration by viewModel.duration.collectAsState()
 
         val screenHeight = with(density) {
             configuration.screenHeightDp.dp.toPx()
         }
+        val dominantColor = if(currentSong != null) Color(currentSong.dominantColor) else Color(0xFF101010)
 
-        val motionSceneContent = remember {
-            context.resources.openRawResource(R.raw.mini_to_expanded_motion_sence)
+        val miniToExpandedState = rememberSwipeableState(PlayerState.MINI)
+        val expandedToTopBarState = rememberSwipeableState(PlayerState.EXPANDED)
+
+        val miniToExpandedMotionSceneContent = remember {
+            context.resources.openRawResource(R.raw.mini_to_expanded_motion_scene)
                 .readBytes()
                 .decodeToString()
         }
 
-        val swipeableState = rememberSwipeableState(PlayerState.MINI)
-
-        val anchors = mapOf(
-            0f to PlayerState.MINI,
-            -screenHeight to PlayerState.EXPANDED,
-        )
-
-        val progress = when {
-            swipeableState.offset.value >= 0 -> 0f // MINI
-            else -> abs(swipeableState.offset.value / screenHeight)
+        val expandedToTopBarMotionSceneContent = remember {
+            context.resources.openRawResource(R.raw.expanded_to_topbar_motion_scene)
+                .readBytes()
+                .decodeToString()
         }
 
-        val exoPlayer = remember {
-            ExoPlayer.Builder(context).build()
+        val miniToExpandedAnchors = mapOf(
+            0f to PlayerState.MINI,
+            -screenHeight to PlayerState.EXPANDED
+        )
+
+        val expandedToTopBarAnchors = mapOf(
+            0f to PlayerState.EXPANDED,
+            -screenHeight to PlayerState.TOP_BAR
+        )
+
+        val miniToExpandedProgress by remember {
+            derivedStateOf {
+                when {
+                    miniToExpandedState.offset.value >= 0 -> 0f
+                    else -> abs(miniToExpandedState.offset.value / screenHeight)
+                }
+            }
+        }
+
+        val expandedToTopBarProgress by remember {
+            derivedStateOf {
+                when {
+                    expandedToTopBarState.offset.value >= 0 -> 0f
+                    else -> abs(expandedToTopBarState.offset.value / screenHeight)
+                }
+            }
         }
 
         LaunchedEffect(currentSong) {
-            if(currentSong != null && swipeableState.currentValue == PlayerState.MINI) {
-                swipeableState.animateTo(PlayerState.EXPANDED)
-                val mediaItem = MediaItem.fromUri(currentSong.audio)
-                exoPlayer.setMediaItem(mediaItem)
-                exoPlayer.prepare()
-                exoPlayer.play()
+            if (currentSong != null && miniToExpandedState.currentValue == PlayerState.MINI) {
+                viewModel.prepareSong(currentSong)
+                miniToExpandedState.animateTo(PlayerState.EXPANDED)
             }
         }
 
-        DisposableEffect(Unit) {
-            onDispose {
-                exoPlayer.release()
-            }
-        }
-
-        val lifecycleOwner = LocalLifecycleOwner.current
         DisposableEffect(lifecycleOwner) {
-            val observer = LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
-                        exoPlayer.pause()
-                    }
-
-                    Lifecycle.Event.ON_DESTROY -> {
-                        exoPlayer.release()
-                    }
-
-                    Lifecycle.Event.ON_RESUME -> {
-                        exoPlayer.play()
-                    }
-
-                    else -> {}
-                }
+            val isPremium = GlobalStateManager.userState.value.premium
+            val observer = LifecycleEventObserver {_, event ->
+                viewModel.handleLifecycleEvent(event, isPremium)
             }
             lifecycleOwner.lifecycle.addObserver(observer)
             onDispose {
                 lifecycleOwner.lifecycle.removeObserver(observer)
-                exoPlayer.release()
-            }
-        }
-
-        val isPlaying = rememberSaveable { mutableStateOf(true) }
-        val currentPosition = rememberSaveable { mutableLongStateOf(0L) }
-        val totalDuration = rememberSaveable { mutableLongStateOf(0L) }
-
-        LaunchedEffect(exoPlayer) {
-            while (true) {
-                currentPosition.longValue = exoPlayer.currentPosition
-                totalDuration.longValue = exoPlayer.duration
-                if (exoPlayer.playerError != null ||
-                    (exoPlayer.currentPosition >= exoPlayer.duration && exoPlayer.duration > 0)) {
-                    isPlaying.value = false
-                }
-
-                delay(500L)
-            }
-        }
-
-        fun playPause() {
-            if (isPlaying.value) {
-                exoPlayer.pause()
-                isPlaying.value = false
-            } else {
-                exoPlayer.play()
-                isPlaying.value = true
             }
         }
 
         Box(
             modifier = modifier
-                .background(progressColor(progress))
+                .fillMaxSize()
+                .background(
+                    progressColor(
+                        begin = Color.Transparent,
+                        end = Color(0xFF101010),
+                        progress = miniToExpandedProgress
+                    )
+                )
 
         ) {
             MotionLayout(
-                motionScene = MotionScene(content = motionSceneContent),
-                progress = progress,
+                motionScene = MotionScene(content = miniToExpandedMotionSceneContent),
+
+                progress = miniToExpandedProgress,
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Transparent)
             ) {
+
                 BottomNavigation(
                     modifier = Modifier
                         .layoutId("bottomNavigation")
-                        .alpha((1f - progress) * (1f - progress))
+                        .alpha((1f - miniToExpandedProgress).pow(20))
                         .zIndex(2f),
                     navController = navController
                 )
@@ -402,8 +371,8 @@ class MainActivity : ComponentActivity() {
                             .fillMaxWidth()
                             .layoutId("navigationBar")
                             .padding(8.dp)
-                            .zIndex(2f * progress)
-                            .alpha(progress * progress),
+                            .zIndex(2f * miniToExpandedProgress)
+                            .alpha((miniToExpandedProgress * (1f - expandedToTopBarProgress)).pow(20)),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -411,8 +380,8 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier
                                 .size(32.dp)
                                 .clickable {
-                                    if (swipeableState.currentValue == PlayerState.EXPANDED) {
-                                        scope.launch { swipeableState.animateTo(PlayerState.MINI) }
+                                    if (miniToExpandedState.currentValue == PlayerState.EXPANDED) {
+                                        scope.launch { miniToExpandedState.animateTo(PlayerState.MINI) }
                                     }
                                 }
                                 .background(Color.Transparent),
@@ -450,48 +419,195 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    AsyncImage(
-                        model = currentSong.thumbnailUrl,
-                        contentDescription = currentSong.title,
+                    Box(
                         modifier = Modifier
-                            .fillMaxHeight(0.3f)
-                            .clip(RoundedCornerShape(4.dp))
-                            .clickable {
-                                scope.launch {
-                                    swipeableState.animateTo(PlayerState.EXPANDED)
-                                }
-                            }
+                            .fillMaxHeight(0.4f)
+                            .layoutId("thumbnail")
                             .zIndex(2f)
-                            .swipeable(
-                                state = swipeableState,
-                                anchors = anchors,
-                                thresholds = { _, _ -> FractionalThreshold(0.3f) },
-                                orientation = Orientation.Vertical,
-                                enabled = true,
-                            )
-                            .layoutId("thumbnail"),
-                        contentScale = ContentScale.Crop
-                    )
+                            .alpha((1f - expandedToTopBarProgress).pow(20))
+                    ) {
+                        // Top Gradient
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .height(16.dp)
+                                .align(Alignment.TopCenter)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            Color(0xFF101010),
+                                            dominantColor.copy(alpha = 0.25f)
+                                        ),
+                                        startY = 0f,
+                                        endY = Float.POSITIVE_INFINITY
+                                    )
+                                )
+                        )
+
+                        // Bottom gradient
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .height(16.dp)
+                                .align(Alignment.BottomCenter)
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(
+                                            dominantColor.copy(alpha = 0.25f),
+                                            Color(0xFF101010)
+                                        ),
+                                        startY = 0f,
+                                        endY = Float.POSITIVE_INFINITY
+                                    )
+                                )
+                        )
+
+                        // Left gradient
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(vertical = 16.dp)
+                                .width(16.dp)
+                                .align(Alignment.CenterStart)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            Color(0xFF101010),
+                                            dominantColor.copy(alpha = 0.25f)
+                                        ),
+                                        startX = 0f,
+                                        endX = Float.POSITIVE_INFINITY
+                                    )
+                                )
+                        )
+
+                        // Right gradient
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .padding(vertical = 16.dp)
+                                .width(16.dp)
+                                .align(Alignment.CenterEnd)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            dominantColor.copy(alpha = 0.25f),
+                                            Color(0xFF101010)
+                                        ),
+                                        startX = 0f,
+                                        endX = Float.POSITIVE_INFINITY
+                                    )
+                                )
+                        )
+
+                        // Top-left corner
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.TopStart)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            dominantColor.copy(alpha = 0.25f),
+                                            Color(0xFF101010)
+                                        ),
+                                        center = Offset(48f, 48f),  // Đặt tâm tại góc trái trên
+                                        radius = 48f // = căn 2 nhân 16dp
+                                    )
+                                )
+                        )
+
+                        // Top-right corner
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.TopEnd)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            dominantColor.copy(alpha = 0.25f),
+                                            Color(0xFF101010)
+                                        ),
+                                        center = Offset(0f, 48f),  // Góc phải trên
+                                        radius = 48f
+                                    )
+                                )
+                        )
+
+                        // Bottom-left corner
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.BottomStart)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            dominantColor.copy(alpha = 0.25f),
+                                            Color(0xFF101010)
+                                        ),
+                                        center = Offset(48f, 0f),  // Góc trái dưới
+                                        radius = 48f
+                                    )
+                                )
+                        )
+
+                        // Bottom-right corner
+                        Box(
+                            modifier = Modifier
+                                .size(16.dp)
+                                .align(Alignment.BottomEnd)
+                                .background(
+                                    brush = Brush.radialGradient(
+                                        colors = listOf(
+                                            dominantColor.copy(alpha = 0.25f),
+                                            Color(0xFF101010)
+                                        ),
+                                        center = Offset(0f, 0f),  // Góc phải dưới
+                                        radius = 48f
+                                    )
+                                )
+                        )
+
+                        AsyncImage(
+                            model = currentSong.thumbnailUrl,
+                            contentDescription = currentSong.title,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .clip(RoundedCornerShape(4.dp))
+                                .clickable {
+                                    scope.launch {
+                                        miniToExpandedState.animateTo(PlayerState.MINI)
+                                    }
+                                }
+                                .padding((16f * miniToExpandedProgress.pow(20)).dp)
+                                .swipeable(
+                                    state = miniToExpandedState,
+                                    anchors = miniToExpandedAnchors,
+                                    thresholds = { _, _ -> FractionalThreshold(0.3f) },
+                                    orientation = Orientation.Vertical,
+                                ),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
 
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color.Transparent)
-                            .swipeable(
-                                state = swipeableState,
-                                anchors = anchors,
-                                thresholds = { _, _ -> FractionalThreshold(0.3f) },
-                                orientation = Orientation.Vertical,
-                                enabled = true,
-                            )
                             .clickable {
                                 scope.launch {
-                                    if (swipeableState.currentValue == PlayerState.MINI) {
-                                        swipeableState.animateTo(PlayerState.EXPANDED)
+                                    if (miniToExpandedState.currentValue == PlayerState.MINI) {
+                                        miniToExpandedState.animateTo(PlayerState.EXPANDED)
                                     }
                                 }
                             }
-                            .alpha((1f - progress) * (1f - progress))
+                            .alpha(
+                                ((1f - miniToExpandedProgress) * (1f - expandedToTopBarProgress)).pow(
+                                    10
+                                )
+                            )
                             .layoutId("short")
                             .zIndex(2f),
                         verticalAlignment = Alignment.CenterVertically,
@@ -522,7 +638,9 @@ class MainActivity : ComponentActivity() {
                         }
 
                         Row(
-                            modifier = Modifier.width(96.dp).fillMaxHeight(),
+                            modifier = Modifier
+                                .width(96.dp)
+                                .fillMaxHeight(),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
@@ -540,11 +658,14 @@ class MainActivity : ComponentActivity() {
                                 modifier = Modifier.size(24.dp)
                             ) {
                                 Icon(
-                                    painter = painterResource(if (isPlaying.value) R.drawable.ic_pause_outline else R.drawable.ic_play_outline),
+                                    painter = painterResource(
+                                        if (isPlaying) R.drawable.ic_pause_outline
+                                        else R.drawable.ic_play_outline
+                                    ),
                                     contentDescription = "Play",
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .clickable { playPause() },
+                                        .clickable { viewModel.playPause() },
                                     tint = Color.White
                                 )
                             }
@@ -563,12 +684,16 @@ class MainActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .alpha(1.25f * (progress - 0.8f) * (progress - 1f))
+                            .alpha(
+                                ((1f - miniToExpandedProgress) * (1f - expandedToTopBarProgress)).pow(
+                                    10
+                                )
+                            )
                             .zIndex(2f)
                             .layoutId("track")
                     ) {
                         ProgressBarShort(
-                            progress = currentPosition.longValue.toFloat() / totalDuration.longValue.toFloat()
+                            progress = currentPosition.toFloat() / duration.toFloat()
                         )
                     }
 
@@ -576,9 +701,13 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(Color.Transparent)
-                            .alpha(progress * progress)
+                            .alpha((miniToExpandedProgress * (1f - expandedToTopBarProgress)).pow(20))
                             .layoutId("details")
                             .zIndex(2f)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { }
                     ) {
                         SongFullDetails(
                             song = currentSong,
@@ -588,7 +717,8 @@ class MainActivity : ComponentActivity() {
                         )
 
                         Column(
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier
+                                .fillMaxWidth()
                                 .padding(start = 16.dp, end = 16.dp, top = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(
@@ -598,17 +728,12 @@ class MainActivity : ComponentActivity() {
                         ) {
                             ProgressBarDetail(
                                 modifier = Modifier,
-                                progress = currentPosition.longValue.toFloat() / totalDuration.longValue.toFloat(),
+                                progress = currentPosition.toFloat() / duration.toFloat(),
                                 onProgressChanged = { newProgress ->
-                                    val seekPosition =
-                                        (newProgress * totalDuration.longValue).toLong()
-                                    currentPosition.longValue = seekPosition
-                                    exoPlayer.seekTo(seekPosition)
+                                    viewModel.seekToProgress(newProgress)
                                 },
                                 onSeekTo = { newProgress ->
-                                    val seekPosition =
-                                        (newProgress * totalDuration.longValue).toLong()
-                                    exoPlayer.seekTo(seekPosition)
+                                    viewModel.seekToProgress(newProgress)
                                 }
                             )
 
@@ -617,12 +742,12 @@ class MainActivity : ComponentActivity() {
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
-                                    text = formatTime(currentPosition.longValue),
+                                    text = formatTime(currentPosition),
                                     color = Color.LightGray,
                                     fontSize = 12.sp
                                 )
                                 Text(
-                                    text = formatTime(totalDuration.longValue),
+                                    text = formatTime(duration),
                                     color = Color.LightGray,
                                     fontSize = 12.sp
                                 )
@@ -649,11 +774,14 @@ class MainActivity : ComponentActivity() {
 
                             Box(modifier = Modifier.size(84.dp)) {
                                 Icon(
-                                    painter = painterResource(if (isPlaying.value) R.drawable.ic_pause_filled else R.drawable.ic_play_filled),
+                                    painter = painterResource(
+                                        if (isPlaying) R.drawable.ic_pause_filled
+                                        else R.drawable.ic_play_filled
+                                    ),
                                     contentDescription = "Play",
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .clickable { playPause() },
+                                        .clickable { viewModel.playPause() },
                                     tint = Color.White
                                 )
                             }
@@ -668,15 +796,350 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+
+                    MotionLayout(
+                        motionScene = MotionScene(content = expandedToTopBarMotionSceneContent),
+                        progress = expandedToTopBarProgress,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Transparent)
+                            .alpha(miniToExpandedProgress.pow(20))
+                            .zIndex(if (miniToExpandedState.currentValue == PlayerState.EXPANDED) 2f else 1f)
+                    ) {
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight(0.4f)
+                                .layoutId("thumbnail")
+                                .zIndex(2f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .height(16.dp)
+                                    .align(Alignment.TopCenter)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color(0xFF101010),
+                                                dominantColor.copy(alpha = 0.25f)
+                                            ),
+                                            startY = 0f,
+                                            endY = Float.POSITIVE_INFINITY
+                                        )
+                                    )
+                            )
+
+                            // Bottom gradient
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .height(16.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        brush = Brush.verticalGradient(
+                                            colors = listOf(
+                                                dominantColor.copy(alpha = 0.25f),
+                                                Color(0xFF101010)
+                                            ),
+                                            startY = 0f,
+                                            endY = Float.POSITIVE_INFINITY
+                                        )
+                                    )
+                            )
+
+                            // Left gradient
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(vertical = 16.dp)
+                                    .width(16.dp)
+                                    .align(Alignment.CenterStart)
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                Color(0xFF101010),
+                                                dominantColor.copy(alpha = 0.25f)
+                                            ),
+                                            startX = 0f,
+                                            endX = Float.POSITIVE_INFINITY
+                                        )
+                                    )
+                            )
+
+                            // Right gradient
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .padding(vertical = 16.dp)
+                                    .width(16.dp)
+                                    .align(Alignment.CenterEnd)
+                                    .background(
+                                        brush = Brush.horizontalGradient(
+                                            colors = listOf(
+                                                dominantColor.copy(alpha = 0.25f),
+                                                Color(0xFF101010)
+                                            ),
+                                            startX = 0f,
+                                            endX = Float.POSITIVE_INFINITY
+                                        )
+                                    )
+                            )
+
+                            // Top-left corner
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .align(Alignment.TopStart)
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                dominantColor.copy(alpha = 0.25f),
+                                                Color(0xFF101010)
+                                            ),
+                                            center = Offset(48f, 48f),  // Đặt tâm tại góc trái trên
+                                            radius = 48f // = căn 2 nhân 16dp
+                                        )
+                                    )
+                            )
+
+                            // Top-right corner
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .align(Alignment.TopEnd)
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                dominantColor.copy(alpha = 0.25f),
+                                                Color(0xFF101010)
+                                            ),
+                                            center = Offset(0f, 48f),  // Góc phải trên
+                                            radius = 48f
+                                        )
+                                    )
+                            )
+
+                            // Bottom-left corner
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .align(Alignment.BottomStart)
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                dominantColor.copy(alpha = 0.25f),
+                                                Color(0xFF101010)
+                                            ),
+                                            center = Offset(48f, 0f),  // Góc trái dưới
+                                            radius = 48f
+                                        )
+                                    )
+                            )
+
+                            // Bottom-right corner
+                            Box(
+                                modifier = Modifier
+                                    .size(16.dp)
+                                    .align(Alignment.BottomEnd)
+                                    .background(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(
+                                                dominantColor.copy(alpha = 0.25f),
+                                                Color(0xFF101010)
+                                            ),
+                                            center = Offset(0f, 0f),  // Góc phải dưới
+                                            radius = 48f
+                                        )
+                                    )
+                            )
+
+                            AsyncImage(
+                                model = currentSong.thumbnailUrl,
+                                contentDescription = currentSong.title,
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .padding(16f * (1f - expandedToTopBarProgress).pow(20).dp)
+                                    ,
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color.Transparent)
+                                .clickable {
+                                    scope.launch {
+                                        if (miniToExpandedState.currentValue == PlayerState.MINI) {
+                                            miniToExpandedState.animateTo(PlayerState.EXPANDED)
+                                        }
+                                    }
+                                }
+                                .alpha(expandedToTopBarProgress * miniToExpandedProgress)
+                                .layoutId("short")
+                                .zIndex(2f),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                                horizontalAlignment = Alignment.Start
+                            ) {
+
+                                Text(
+                                    text = currentSong.title.replaceFirstChar { it.uppercaseChar() },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+
+                                Text(
+                                    text = currentSong.artist.name,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    fontSize = 12.sp,
+                                    color = Color.LightGray
+                                )
+                            }
+
+                            Row(
+                                modifier = Modifier
+                                    .width(96.dp)
+                                    .fillMaxHeight(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+
+                                Box(modifier = Modifier.size(24.dp)) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_skip_previous),
+                                        contentDescription = "Previous",
+                                        modifier = Modifier.fillMaxSize(),
+                                        tint = Color.White
+                                    )
+                                }
+
+                                Box(
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (isPlaying) R.drawable.ic_pause_outline
+                                            else R.drawable.ic_play_outline
+                                        ),
+                                        contentDescription = "Play",
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clickable { viewModel.playPause() },
+                                        tint = Color.White
+                                    )
+                                }
+
+                                Box(modifier = Modifier.size(24.dp)) {
+                                    Icon(
+                                        painter = painterResource(R.drawable.ic_skip_next),
+                                        contentDescription = "Next",
+                                        modifier = Modifier.fillMaxSize(),
+                                        tint = Color.White
+                                    )
+                                }
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .layoutId("anchorDraggable")
+                                .alpha(miniToExpandedProgress)
+                                .background(Color.Transparent)
+                                .clickable(
+                                    enabled = expandedToTopBarState.currentValue == PlayerState.EXPANDED,
+                                    indication = null,
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) {
+                                    scope.launch {
+                                        expandedToTopBarState.animateTo(PlayerState.TOP_BAR)
+                                    }
+                                }
+                                .swipeable(
+                                    state = expandedToTopBarState,
+                                    anchors = expandedToTopBarAnchors,
+                                    thresholds = { _, _ -> FractionalThreshold(0.3f) },
+                                    orientation = Orientation.Vertical,
+                                    enabled = expandedToTopBarState.currentValue == PlayerState.TOP_BAR || (
+                                            expandedToTopBarState.currentValue == PlayerState.EXPANDED
+                                                    && miniToExpandedState.currentValue == PlayerState.EXPANDED
+                                            )
+                                )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        progressColor(
+                                            begin = Color.Transparent,
+                                            end = Color.DarkGray,
+                                            progress = expandedToTopBarProgress
+                                        )
+                                    )
+                                    .align(Alignment.TopCenter)
+                                    .padding(vertical = 16.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(64.dp)
+                                        .padding(horizontal = 32.dp),
+                                    verticalAlignment = Alignment.Top,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Box() {
+                                        Text(
+                                            text = "UP NEXT",
+                                            color = Color.LightGray,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Box() {
+                                        Text(
+                                            text = "LYRICS",
+                                            color = Color.LightGray,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+
+                                    Box() {
+                                        Text(
+                                            text = "RELATED",
+                                            color = Color.LightGray,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 
-    private fun progressColor(progress: Float): Color {
+
+    private fun progressColor(begin: Color, end: Color, progress: Float): Color {
         return lerp(
-            start = Color.Transparent,
-            stop = Color(0xFF101010),
+            start = begin,
+            stop = end,
             fraction = progress
         )
     }
@@ -693,7 +1156,9 @@ class MainActivity : ComponentActivity() {
                 .fillMaxWidth()
                 .height(8.dp)
         ) {
-            Canvas(modifier = Modifier.fillMaxWidth().height(trackHeight)) {
+            Canvas(modifier = Modifier
+                .fillMaxWidth()
+                .height(trackHeight)) {
                 val width = size.width
                 val centerY = size.height / 2
 
@@ -747,13 +1212,19 @@ class MainActivity : ComponentActivity() {
                     detectHorizontalDragGestures { change, dragAmount ->
                         change.consume()
                         val width = size.width.toFloat()
-                        val newProgress = ((currentProgress.floatValue * width + dragAmount) / width).coerceIn(0f, 1f)
+                        val newProgress =
+                            ((currentProgress.floatValue * width + dragAmount) / width).coerceIn(
+                                0f,
+                                1f
+                            )
                         currentProgress.floatValue = newProgress
                         onProgressChanged(newProgress)
                     }
                 }
         ) {
-            Canvas(modifier = Modifier.fillMaxWidth().height(trackHeight)) {
+            Canvas(modifier = Modifier
+                .fillMaxWidth()
+                .height(trackHeight)) {
                 val width = size.width
                 val centerY = size.height / 2
 
@@ -1034,6 +1505,14 @@ class MainActivity : ComponentActivity() {
                 overflow = TextOverflow.Ellipsis
             )
         }
+    }
+
+    fun reloadActivity() {
+        SharedExoPlayer.reset()
+        GlobalStateManager.reset()
+        val intent = intent
+        finish()
+        startActivity(intent)
     }
 
     private fun makeStatusBarTransparent() {

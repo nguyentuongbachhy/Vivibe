@@ -9,15 +9,11 @@ import org.json.JSONObject
 import java.io.File
 
 object GlobalStateManager {
-    private val _userState = MutableStateFlow(User("", "", "", "", ""))
+    private val _userState = MutableStateFlow(User("", "", "", "", "", 0))
     val userState = _userState.asStateFlow()
 
     private val _tokenExpired = MutableStateFlow(false)
     val tokenExpired: MutableStateFlow<Boolean> = _tokenExpired
-
-    fun updateUser(user: User) {
-        _userState.value = user
-    }
 
     fun setTokenExpired() {
         _tokenExpired.value = true
@@ -25,6 +21,10 @@ object GlobalStateManager {
 
     fun resetTokenExpired() {
         _tokenExpired.value = false
+    }
+
+    private fun encode(data: String): String {
+        return Base64.encodeToString(data.toByteArray(Charsets.UTF_8), Base64.DEFAULT)
     }
 
     private fun decode(encodedData: String): String {
@@ -37,7 +37,7 @@ object GlobalStateManager {
 
             if(!file.exists()) {
                 println("File does not exist!")
-                _userState.value = User("", "", "", "", "")
+                _userState.value = User("", "", "", "", "", 0)
             }
             else {
                 val obfuscatedContent = file.readText()
@@ -48,10 +48,11 @@ object GlobalStateManager {
                     googleId = userData.optString("googleId", ""),
                     name = userData.optString("name", ""),
                     email = userData.optString("email", ""),
-                    profilePictureUri = userData.optString("profilePictureUri", "")
+                    profilePictureUri = userData.optString("profilePictureUri", ""),
+                    premium = userData.optInt("premium", 0)
                 )
                 if (user.token!!.isBlank() || user.googleId!!.isBlank()) {
-                    _userState.value = User("", "", "", "", "")
+                    _userState.value = User("", "", "", "", "", 0)
                 } else {
                     _userState.value = user
                 }
@@ -59,5 +60,45 @@ object GlobalStateManager {
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+
+    fun saveUserDataToFile(context: Context, user: User) {
+        try {
+            val userData = JSONObject().apply {
+                put("token", user.token)
+                put("googleId", user.googleId)
+                put("name", user.name)
+                put("email", user.email)
+                put("profilePictureUri", user.profilePictureUri)
+                put("premium", user.premium)
+            }
+
+            val obfuscatedData = encode(userData.toString())
+            val file = File(context.filesDir, "user_info.json")
+            file.writeText(obfuscatedData)
+            loadUserFromFile(context)
+            println("User data saved successfully.")
+        } catch (e: Exception) {
+            println("Error saving user data to file: ${e.message}")
+        }
+    }
+
+    fun deleteUserDataFile(context: Context) {
+        try {
+            val file = File(context.filesDir, "user_info.json")
+            if(file.exists()) {
+                val success = file.delete()
+                println("User data file deleted: $success")
+            }
+            loadUserFromFile(context)
+        } catch (e: Exception) {
+            print("Error deleting user data file: ${e.message}")
+        }
+    }
+
+    fun reset() {
+        _userState.value = User("", "", "", "", "", 0)
+        _tokenExpired.value = false
     }
 }

@@ -62,9 +62,9 @@
       "thumbnail": {
         "width": "spread",
         "height": "wrap",
-        "start": ["parent", "start", 16],
-        "end": ["parent", "end", 16],
-        "top": ["navigationBar", "bottom", 16]
+        "start": ["parent", "start"],
+        "end": ["parent", "end"],
+        "top": ["navigationBar", "bottom"]
       },
       "short": {
         "width": 0,
@@ -88,5 +88,5 @@
         "visibility": "gone"
       }
     }
-  },
+  }
 }

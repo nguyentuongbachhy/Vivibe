@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">Vivibe</string>
+    <string name="app_name">ViVibe</string>
     <string name="BASE_URL">http://192.168.137.1:2701</string>
 </resources>

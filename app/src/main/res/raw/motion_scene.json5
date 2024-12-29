@@ -1,6 +1,6 @@
 {
   "ConstraintSets": {
-    "initial": {
+    "start": {
       "bottomNavigation": {
         "width": "spread",
         "height": 64,
@@ -43,14 +43,14 @@
         "top": ["thumbnail", "bottom", 8],
         "visibility": "visible"
       },
-      "dragHandle": {
+      "anchorDraggable": {
         "width": "spread",
         "height": 0,
         "alpha": 0,
         "visibility": "gone"
       }
     },
-    "start": {
+    "mid": {
       "bottomNavigation": {
         "width": "spread",
         "height": 0,
@@ -93,7 +93,7 @@
         "alpha": 0,
         "visibility": "gone"
       },
-      "dragHandle": {
+      "anchorDraggable": {
         "width": "spread",
         "height": 64,
         "start": ["parent", "start"],
@@ -143,7 +143,7 @@
         "top": ["thumbnail", "bottom", 8],
         "visibility": "visible"
       },
-      "dragHandle": {
+      "anchorDraggable": {
         "width": "spread",
         "height": "spread",
         "start": ["parent", "start"],

@@ -19,10 +19,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.State
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +30,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
+import com.example.vivibe.MainActivity
 import com.example.vivibe.model.QuickPicksSong
 import com.example.vivibe.R
 import com.example.vivibe.model.User
@@ -43,9 +42,10 @@ import com.example.vivibe.router.SearchRouter
 import com.example.vivibe.router.TopAppBar
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
-class Home(appContext: Context, songClient: SongClient) {
+class Home(private val appContext: Context, songClient: SongClient) {
     private val user = GlobalStateManager.userState
     private val homeViewModel = HomeViewModel(appContext, songClient)
 
@@ -55,6 +55,7 @@ class Home(appContext: Context, songClient: SongClient) {
         val showTokenExpiredDialog = homeViewModel.showTokenExpiredDialog.collectAsState()
         val homeComponentViewModel = homeViewModel.homeComponentViewModel.collectAsState()
         val isRefreshing = homeViewModel.isRefreshing.collectAsState()
+        val scope = rememberCoroutineScope()
 
         val homeComponent = HomeComponent(homeComponentViewModel.value)
 
@@ -69,9 +70,13 @@ class Home(appContext: Context, songClient: SongClient) {
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            homeViewModel.dismissTokenExpiredDialog()
-                            homeViewModel.signOut()
-                            homeViewModel.reload()
+                            scope.launch {
+                                homeViewModel.dismissTokenExpiredDialog()
+                                val success = homeViewModel.signOut()
+                                if(success) {
+                                    homeViewModel.reload()
+                                }
+                            }
                         }
                     ) {
                         Text(text = "OK")
@@ -88,7 +93,7 @@ class Home(appContext: Context, songClient: SongClient) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                TopAppBar { HomeActions(navController, user.value, homeViewModel) }
+                TopAppBar { HomeActions(appContext, scope, navController, user.value, homeViewModel) }
 
                 homeComponent.GenresScreen()
 
@@ -119,6 +124,8 @@ class Home(appContext: Context, songClient: SongClient) {
 
     @Composable
     private fun HomeActions(
+        context: Context,
+        scope: CoroutineScope,
         navController: NavController,
         user: User?,
         homeViewModel: HomeViewModel
@@ -156,11 +163,15 @@ class Home(appContext: Context, songClient: SongClient) {
                 )
             }
 
-            if (user == User("", "", "", "", "")) {
+            if (user == User("", "", "", "", "", 0)) {
                 IconButton(
                     onClick = {
-                        homeViewModel.signIn()
-                        homeViewModel.reload()
+                        scope.launch {
+                            val success = homeViewModel.signIn()
+                            if(success) {
+                                (context as? MainActivity)?.reloadActivity()
+                            }
+                        }
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
@@ -175,8 +186,10 @@ class Home(appContext: Context, songClient: SongClient) {
             } else {
                 IconButton(
                     onClick = {
-                        homeViewModel.signOut()
-                        homeViewModel.reload()
+                        scope.launch {
+                            homeViewModel.signOut()
+                            (context as? MainActivity)?.reloadActivity()
+                        }
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
