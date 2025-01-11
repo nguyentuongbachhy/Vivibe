@@ -1,61 +1,48 @@
 package com.example.vivibe.api.login
 
+import android.annotation.SuppressLint
 import android.content.Context
-import android.util.Base64
 import com.example.vivibe.R
 import com.example.vivibe.model.User
 import com.example.vivibe.api.RetrofitClient
-import org.json.JSONObject
-import java.io.File
+import com.example.vivibe.manager.UserManager
 
-class GoogleLoginService(private val context: Context) {
+class GoogleLoginService private constructor(
+    context: Context,
+    private val userManager: UserManager
+) {
     private val api: GoogleLoginInterface
 
-    init {
-        val baseURL:String = context.getString(R.string.BASE_URL)
-        val token = getToken()
-        val retrofit = RetrofitClient.getClient(baseURL, token)
-        api = retrofit.create(GoogleLoginInterface::class.java)
-    }
+    companion object {
+        @SuppressLint("StaticFieldLeak")
+        @Volatile private var instance: GoogleLoginService? = null
 
-    private fun decode(encodedData: String): String {
-        return String(Base64.decode(encodedData, Base64.DEFAULT), Charsets.UTF_8)
-    }
-
-    private fun getToken(): String? {
-        try {
-            val file = File(context.filesDir, "user_info.json")
-
-            if(!file.exists()) {
-                println("User data file not found")
-                return null
+        fun getInstance(context: Context): GoogleLoginService {
+            return instance ?: synchronized(this) {
+                instance ?: GoogleLoginService(
+                    context.applicationContext,
+                    UserManager.getInstance(context)
+                ).also { instance = it }
             }
-
-            val obfuscatedContent = file.readText()
-            val content = decode(obfuscatedContent)
-            val userData = JSONObject(content)
-            val token = userData.optString("token")
-
-            if (token.isBlank()) {
-                println("Missing required user data.")
-                return null
-            }
-
-            return token
-        } catch (e: Exception) {
-            println("Error loading user data from file: ${e.message}")
-            return null
         }
     }
 
+    init {
+        val baseURL = context.getString(R.string.BASE_URL)
+        val retrofit = RetrofitClient.getClient(baseURL, userManager.getToken())
+        api = retrofit.create(GoogleLoginInterface::class.java)
+    }
 
     suspend fun googleLogin(user: User): GoogleLoginResponse? {
         return try {
             val response = api.googleLogin(GoogleLoginRequest(user))
-            if (response.isSuccessful) {
-                response.body()
-            } else {
-                null
+            response.body()?.also {
+                if (it.err == 0 && it.token != null) {
+                    userManager.saveUser(user.copy(
+                        token = it.token,
+                        premium = it.premium
+                    ))
+                }
             }
         } catch (e: Exception) {
             e.printStackTrace()

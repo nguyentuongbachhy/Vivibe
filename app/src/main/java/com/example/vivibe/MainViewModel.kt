@@ -6,21 +6,24 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
-import androidx.compose.runtime.mutableStateOf
+import android.util.Log
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.components.song.PlaybackService
-import com.example.vivibe.manager.GlobalStateManager
+import com.example.vivibe.database.DatabaseHelper
 import com.example.vivibe.manager.SharedExoPlayer
+import com.example.vivibe.manager.UserManager
 import com.example.vivibe.model.PlaySong
 import com.example.vivibe.model.QuickPicksSong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class MainViewModel(private val appContext: Context) : ViewModel() {
+class MainViewModel(private val appContext: Context, private val userManager: UserManager, private val exoPlayer: SharedExoPlayer) : ViewModel() {
+    private val dbHelper = DatabaseHelper(appContext)
+    private val songClient = MutableStateFlow<SongClient?>(null)
 
     private val _showBottomSheet = MutableStateFlow(false)
     val showBottomSheet: StateFlow<Boolean> get() = _showBottomSheet
@@ -28,18 +31,24 @@ class MainViewModel(private val appContext: Context) : ViewModel() {
     private val _currentBottomSheetSong = MutableStateFlow<QuickPicksSong?>(null)
     val currentBottomSheetSong: StateFlow<QuickPicksSong?> get() = _currentBottomSheetSong
 
-    private val _currentSong = MutableStateFlow<PlaySong?>(null)
-    val currentSong: StateFlow<PlaySong?> get() = _currentSong
+    private val _isLikedBottomSheetSong = MutableStateFlow(false)
+    val isLikedBottomSheetSong: StateFlow<Boolean> get() = _isLikedBottomSheetSong
 
-    val isPlaying = SharedExoPlayer.isPlaying
-    val currentPosition = SharedExoPlayer.currentPosition
-    val duration = SharedExoPlayer.duration
+    private val _isDislikedBottomSheetSong = MutableStateFlow(false)
+    val isDislikedBottomSheetSong: StateFlow<Boolean> get() = _isDislikedBottomSheetSong
 
-    val songClient = mutableStateOf<SongClient?>(null)
+    val currentSongId = exoPlayer.currentSongId
+    val listSong = exoPlayer.listSong
+    val isPlaying = exoPlayer.isPlaying
+    val isShuffle = exoPlayer.isShuffleEnabled
+    val isRepeat = exoPlayer.isRepeatEnabled
+    val currentPosition = exoPlayer.currentPosition
+    val duration = exoPlayer.duration
 
     @SuppressLint("StaticFieldLeak")
     private var playbackService: PlaybackService? = null
     private var serviceBound = false
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             val binder = service as PlaybackService.LocalBinder
@@ -54,25 +63,23 @@ class MainViewModel(private val appContext: Context) : ViewModel() {
     }
 
     init {
-        GlobalStateManager.loadUserFromFile(appContext)
-        SharedExoPlayer.initialize(appContext)
+        initializeUserState()
+    }
 
-        if(GlobalStateManager.userState.value.premium == 1) {
+    private fun initializeUserState() {
+        viewModelScope.launch {
+            userManager.userState.collect { user ->
+                handlePlaybackService(user?.premium == 1)
+                songClient.value = SongClient(appContext, user?.token.orEmpty())
+            }
+        }
+    }
+
+    private fun handlePlaybackService(isPremium: Boolean) {
+        if (isPremium) {
             bindPlaybackService()
         } else {
             stopBackgroundPlayback()
-        }
-
-        viewModelScope.launch {
-            GlobalStateManager.userState.collect { user ->
-                songClient.value = SongClient(appContext, user.token ?: "")
-            }
-        }
-
-        viewModelScope.launch {
-            SharedExoPlayer.currentSong.collect { song ->
-                _currentSong.value = song
-            }
         }
     }
 
@@ -97,26 +104,39 @@ class MainViewModel(private val appContext: Context) : ViewModel() {
         when(event) {
             Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
                 if (isPremium == 0) {
-                    SharedExoPlayer.pause()
+                    exoPlayer.pause()
                     stopBackgroundPlayback()
                 }
             }
             Lifecycle.Event.ON_RESUME -> {
-                if (SharedExoPlayer.isPlaying.value) {
-                    SharedExoPlayer.play()
+                if (exoPlayer.isPlaying.value) {
+                    exoPlayer.play()
                 } else {
-                    SharedExoPlayer.pause()
+                    exoPlayer.pause()
                 }
             }
             else -> {}
         }
     }
 
-
     fun showBottomSheet(song: QuickPicksSong) {
+        Log.d("MainViewModel", "Received song: $song")
+        val googleId = userManager.getGoogleId()
         viewModelScope.launch {
-            _currentBottomSheetSong.value = song
-            _showBottomSheet.value = true
+            try {
+                _currentBottomSheetSong.value = song
+                _showBottomSheet.value = true
+
+                updateBottomSheetLikeStatus(song.id)
+
+                Log.d("MainViewModel", "Bottom sheet shown for song ${song.id}")
+                Log.d("MainViewModel", "GoogleId: $googleId")
+                Log.d("MainViewModel", "Like status: ${_isLikedBottomSheetSong.value}")
+                Log.d("MainViewModel", "Dislike status: ${_isDislikedBottomSheetSong.value}")
+            } catch (e: Exception) {
+                Log.e("MainViewModel", "Error showing bottom sheet", e)
+                e.printStackTrace()
+            }
         }
     }
 
@@ -124,48 +144,104 @@ class MainViewModel(private val appContext: Context) : ViewModel() {
         viewModelScope.launch {
             _currentBottomSheetSong.value = null
             _showBottomSheet.value = false
+            resetBottomSheetLikeStatus()
         }
+    }
+
+    private fun updateBottomSheetLikeStatus(songId: Int) {
+        val googleId = userManager.getGoogleId()
+        if (googleId.isNullOrBlank()) {
+            resetBottomSheetLikeStatus()
+            return
+        }
+
+        _isLikedBottomSheetSong.value = dbHelper.isLikedSong(googleId, songId)
+        _isDislikedBottomSheetSong.value = dbHelper.isDislikedSong(googleId, songId)
+    }
+
+    private fun resetBottomSheetLikeStatus() {
+        _isLikedBottomSheetSong.value = false
+        _isDislikedBottomSheetSong.value = false
     }
 
 
     fun fetchPlaySong(songId: Int) {
         viewModelScope.launch {
             try {
-                val fetchedPlaySong = songClient.value?.fetchPlayingSong(songId)
-                if(fetchedPlaySong != null) {
-                    _currentSong.value = fetchedPlaySong
-                    prepareSong(fetchedPlaySong)
-                    println("Playing song fetched successfully")
-                } else {
-                    println("No playing song fetched")
+                val fetchedPlaySongs = songClient.value?.fetchPlayingSong(songId) ?: return@launch
+                if (fetchedPlaySongs.isNotEmpty()) {
+                    exoPlayer.updateSongs(fetchedPlaySongs)
                 }
             } catch (e: Exception) {
-                println("Error fetching playing song: ${e.message}")
+                Log.e(TAG, "Error fetching playing song", e)
             }
         }
     }
 
-    fun prepareSong(song: PlaySong) {
-        SharedExoPlayer.prepareSong(song)
+    fun updateLikeStatusBottomSheet(songId: Int) {
+        val googleId = userManager.getGoogleId() ?: return
+        val newLikeState = !_isLikedBottomSheetSong.value
+
+        viewModelScope.launch {
+            try {
+                _isLikedBottomSheetSong.value = newLikeState
+
+                val response = songClient.value?.updateLikes(songId.toString(), newLikeState)
+                if (response.isNullOrBlank()) {
+                    _isLikedBottomSheetSong.value = !newLikeState
+                    return@launch
+                }
+
+                dbHelper.updateLikedStatus(googleId, songId, newLikeState)
+
+                if (newLikeState && _isDislikedBottomSheetSong.value) {
+                    _isDislikedBottomSheetSong.value = false
+                    dbHelper.updateDislikedStatus(googleId, songId, false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating like status", e)
+                _isLikedBottomSheetSong.value = !newLikeState
+            }
+        }
     }
 
-    fun playPause() {
-        SharedExoPlayer.playPause()
+
+    fun updateDislikeStatusBottomSheet(songId: Int) {
+        val googleId = userManager.getGoogleId() ?: return
+        val newDislikeState = !_isDislikedBottomSheetSong.value
+
+        viewModelScope.launch {
+            try {
+                _isDislikedBottomSheetSong.value = newDislikeState
+                dbHelper.updateDislikedStatus(googleId, songId, newDislikeState)
+
+                if (newDislikeState && _isLikedBottomSheetSong.value) {
+                    _isLikedBottomSheetSong.value = false
+                    dbHelper.updateLikedStatus(googleId, songId, false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating dislike status", e)
+                _isDislikedBottomSheetSong.value = !newDislikeState
+            }
+        }
     }
 
-    private fun playPlayer() {
-        SharedExoPlayer.play()
+    fun prepareSong(song: PlaySong) = exoPlayer.prepareSong(song)
+    fun playPause() = exoPlayer.playPause()
+    fun previous() = exoPlayer.handlePreviousTrack()
+    fun next() = exoPlayer.handleNextTrack()
+    fun shuffle() = exoPlayer.handleShuffle()
+    fun repeat() = exoPlayer.handleRepeat()
+    fun playOneInListSong(songId: Int) = exoPlayer.handlePlayOneInListSong(songId)
+    fun seekToProgress(progress: Float) = exoPlayer.seekToProgress(progress)
+    fun reset() = exoPlayer.reset()
+
+    override fun onCleared() {
+        super.onCleared()
+        stopBackgroundPlayback()
     }
 
-    private fun pausePlayer() {
-        SharedExoPlayer.pause()
-    }
-
-    fun seekTo(position: Long) {
-        SharedExoPlayer.seekTo(position)
-    }
-
-    fun seekToProgress(progress: Float) {
-        SharedExoPlayer.seekToProgress(progress)
+    companion object {
+        private const val TAG = "MainViewModel"
     }
 }

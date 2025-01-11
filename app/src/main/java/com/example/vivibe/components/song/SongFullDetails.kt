@@ -1,5 +1,8 @@
 package com.example.vivibe.components.song
 
+import androidx.compose.foundation.MarqueeAnimationMode
+import androidx.compose.foundation.MarqueeSpacing
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
@@ -19,11 +22,18 @@ fun SongFullDetails(
     Column(
         modifier = modifier.padding(10.dp)
     ) {
+
         Text(
-            text = song.title.replaceFirstChar { it.uppercaseChar() },
+            text = song.title,
             color = Color.White,
             fontSize = 28.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.basicMarquee(
+                iterations = Int.MAX_VALUE,
+                spacing = MarqueeSpacing(16.dp),
+                repeatDelayMillis = 0,
+                animationMode = MarqueeAnimationMode.Immediately
+            )
         )
 
         Text(
@@ -34,3 +44,4 @@ fun SongFullDetails(
         )
     }
 }
+

@@ -1,13 +1,15 @@
 package com.example.vivibe.api.genre
 
 import android.content.Context
+
 import com.example.vivibe.model.Genre
 
-class GenreClient(context: Context, token: String) {
+class GenreClient(context: Context, token: String?) {
     private val tag = "GenreClient: "
-    private val genreService = GenreService(context, token)
+    private val genreService = token?.let { GenreService(context, it) }
 
     suspend fun fetchGenres(): List<Genre> {
+        if(genreService == null) return emptyList()
         return try {
             val response = genreService.fetchGenres()
             if (response?.err == 0) {

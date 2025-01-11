@@ -1,6 +1,5 @@
 package com.example.vivibe.api.interceptor
 
-import com.example.vivibe.manager.GlobalStateManager
 import okhttp3.Interceptor
 import okhttp3.Response
 
@@ -12,15 +11,7 @@ class TokenExpirationInterceptor(private val excludedPaths: List<String>) : Inte
         if (excludedPaths.any { path.contains(it) }) {
             return chain.proceed(request)
         }
-
         val response = chain.proceed(request)
-
-        if (response.code == 401) {
-            GlobalStateManager.setTokenExpired()
-        } else {
-            GlobalStateManager.resetTokenExpired()
-        }
-
         return response
     }
 }

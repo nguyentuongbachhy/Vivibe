@@ -8,7 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,9 +38,9 @@ import com.example.vivibe.MainActivity
 import com.example.vivibe.model.QuickPicksSong
 import com.example.vivibe.R
 import com.example.vivibe.model.User
-import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.components.home.HomeComponent
-import com.example.vivibe.manager.GlobalStateManager
+import com.example.vivibe.manager.UserManager
+import com.example.vivibe.model.Genre
 import com.example.vivibe.router.NotificationsRouter
 import com.example.vivibe.router.SearchRouter
 import com.example.vivibe.router.TopAppBar
@@ -45,24 +49,24 @@ import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-class Home(private val appContext: Context, songClient: SongClient) {
-    private val user = GlobalStateManager.userState
-    private val homeViewModel = HomeViewModel(appContext, songClient)
+class Home(private val appContext: Context) {
+    private val userManager = UserManager.getInstance(appContext)
+    private val user = userManager.userState
 
     @SuppressLint("StateFlowValueCalledInComposition")
     @Composable
-    fun HomeScreen(navController: NavController, onSongMoreClick: (QuickPicksSong) -> Unit, onPlayMusicNavigate: (Int) -> Unit) {
-        val showTokenExpiredDialog = homeViewModel.showTokenExpiredDialog.collectAsState()
-        val homeComponentViewModel = homeViewModel.homeComponentViewModel.collectAsState()
-        val isRefreshing = homeViewModel.isRefreshing.collectAsState()
+    fun HomeScreen(homeViewModel: HomeViewModel, homeComponent: HomeComponent, navController: NavController, onSongMoreClick: (QuickPicksSong) -> Unit, onPlayMusicNavigate: (Int) -> Unit) {
+        val state by homeViewModel.state.collectAsState()
+        val showTokenExpiredDialog = state.showTokenExpiredDialog
+        val isRefreshing = state.isRefreshing
+        val selectedGenre = state.selectedGenre
+
         val scope = rememberCoroutineScope()
 
-        val homeComponent = HomeComponent(homeComponentViewModel.value)
-
-        val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing.value)
+        val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = isRefreshing)
 
 
-        if (showTokenExpiredDialog.value) {
+        if (showTokenExpiredDialog) {
             AlertDialog(
                 onDismissRequest = {},
                 title = { Text(text = "Session Expired") },
@@ -95,28 +99,52 @@ class Home(private val appContext: Context, songClient: SongClient) {
             ) {
                 TopAppBar { HomeActions(appContext, scope, navController, user.value, homeViewModel) }
 
-                homeComponent.GenresScreen()
+                homeComponent.GenresScreen(
+                    selectedGenre = selectedGenre,
+                    updateSelectedGenre = homeViewModel::updateSelectedGenre
+                )
 
                 SwipeRefresh(
                     state = swipeRefreshState,
                     onRefresh = homeViewModel::loadHomeComponent
                 ) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(start = 8.dp, end = 0.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        item {
-                            homeComponent.QuickPicksScreen(onSongMoreClick, onPlayMusicNavigate)
-                        }
+                    if(selectedGenre == Genre.ALL) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(start = 8.dp, end = 0.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            item {
+                                homeComponent.QuickPicksScreen(onSongMoreClick, onPlayMusicNavigate)
+                            }
 
-                        item {
-                            homeComponent.SpeedDialScreen(user.value, onPlayMusicNavigate)
+                            item {
+                                homeComponent.SpeedDialScreen(user.value, onPlayMusicNavigate)
+                            }
+
+                            item {
+                                homeComponent.ForgottenFavoritesScreen(onPlayMusicNavigate)
+                            }
+
+                            item {
+                                homeComponent.NewReleasesScreen(onPlayMusicNavigate)
+                            }
+
+                            item {
+                                homeComponent.ArtistAlbumsScreen(
+                                    navController = navController, onPlayMusicNavigate = onPlayMusicNavigate)
+                            }
+
+                            item {
+                                Spacer(modifier = Modifier.fillMaxWidth().height(128.dp))
+                            }
+
                         }
+                    } else {
+                        homeComponent.GenreSongsScreen(selectedGenre.name, onPlayMusicNavigate)
                     }
-
                 }
             }
         }
@@ -163,11 +191,11 @@ class Home(private val appContext: Context, songClient: SongClient) {
                 )
             }
 
-            if (user == User("", "", "", "", "", 0)) {
+            if (user == null) {
                 IconButton(
                     onClick = {
                         scope.launch {
-                            val success = homeViewModel.signIn()
+                            val success = homeViewModel.signIn(context)
                             if(success) {
                                 (context as? MainActivity)?.reloadActivity()
                             }
@@ -193,15 +221,13 @@ class Home(private val appContext: Context, songClient: SongClient) {
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
-                    user?.profilePictureUri?.let { uri ->
-                        Image(
-                            painter = rememberAsyncImagePainter(model = uri),
-                            contentDescription = "User Profile",
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                        )
-                    }
+                    Image(
+                        painter = rememberAsyncImagePainter(model = user.profilePictureUri),
+                        contentDescription = "User Profile",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                    )
                 }
             }
         }
