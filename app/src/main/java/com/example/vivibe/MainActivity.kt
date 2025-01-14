@@ -10,6 +10,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.MarqueeSpacing
@@ -33,6 +39,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -58,6 +65,7 @@ import androidx.compose.material.rememberSwipeableState
 import androidx.compose.material.swipeable
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -86,6 +94,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
@@ -818,12 +828,10 @@ class MainActivity: ComponentActivity() {
                                 text = "Share"
                             )
 
-                            OptionItem(
-                                icon = R.drawable.ic_download,
-                                iconSize = 18,
-                                text = "Download"
+                            DownloadButton(
+                                currentSongId = currentSong.id,
+                                viewModel = viewModel
                             )
-
                         }
 
                         Column(
@@ -1106,9 +1114,24 @@ class MainActivity: ComponentActivity() {
         Row(
             modifier = Modifier
                 .height(36.dp)
-                .clip(RoundedCornerShape(topStart = 100f, topEnd = 100f, bottomStart = 100f, bottomEnd = 100f))
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
                 .padding(start = 16.dp)
-                .background(Color.White.copy(0.3f), RoundedCornerShape(topStart = 100f, topEnd = 100f, bottomStart = 100f, bottomEnd = 100f))
+                .background(
+                    Color.White.copy(0.3f),
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
                 .padding(vertical = 4.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
@@ -1138,13 +1161,130 @@ class MainActivity: ComponentActivity() {
     }
 
     @Composable
+    private fun DownloadButton(currentSongId: Int, viewModel: MainViewModel, modifier: Modifier = Modifier) {
+        val downloadProgress by viewModel.downloadProgress.collectAsState()
+        val isDownloading = downloadProgress.containsKey(currentSongId)
+        val progress = downloadProgress[currentSongId] ?: 0f
+        val isDownloaded by remember(currentSongId) {
+            derivedStateOf {
+                val downloaded = viewModel.isDownloaded(currentSongId)
+                Log.d("DownloadButton", "Song $currentSongId isDownloaded: $downloaded")
+                downloaded
+            }
+        }
+
+        val infiniteTransition = rememberInfiniteTransition(label = "download_rotation")
+        val rotation by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(2000, easing = LinearEasing),
+                repeatMode = RepeatMode.Restart
+            ),
+            label = "download_rotation"
+        )
+
+        Row(
+            modifier = modifier
+                .height(36.dp)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
+                .padding(start = 8.dp)
+                .background(
+                    Color.White.copy(0.3f),
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
+                .padding(vertical = 4.dp, horizontal = 16.dp)
+                .clickable(enabled = !isDownloading) {
+                    viewModel.downloadSong(currentSongId)
+                },
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    isDownloading -> {
+                        // Show loading animation
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .offset(x = (-2).dp, y = (-2).dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    isDownloaded -> {
+                        // Show downloaded icon
+                        Icon(
+                            painter = painterResource(R.drawable.ic_downloaded), // You'll need this icon
+                            contentDescription = "Downloaded",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White
+                        )
+                    }
+                    else -> {
+                        // Show download icon
+                        Icon(
+                            painter = painterResource(R.drawable.ic_download),
+                            contentDescription = "Download",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = when {
+                    isDownloading -> "Downloading ${(progress * 100).toInt()}%"
+                    isDownloaded -> "Downloaded"
+                    else -> "Download"
+                },
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+
+    @Composable
     private fun OptionItem(icon: Int, iconSize: Int, text: String) {
         Row(
             modifier = Modifier
                 .height(36.dp)
-                .clip(RoundedCornerShape(topStart = 100f, topEnd = 100f, bottomStart = 100f, bottomEnd = 100f))
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
                 .padding(start = 8.dp)
-                .background(Color.White.copy(0.3f), RoundedCornerShape(topStart = 100f, topEnd = 100f, bottomStart = 100f, bottomEnd = 100f))
+                .background(
+                    Color.White.copy(0.3f),
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
                 .padding(vertical = 4.dp, horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
@@ -1780,7 +1920,10 @@ class MainActivity: ComponentActivity() {
                         BottomSheetItem(R.drawable.ic_add_to_library, "Save to library")
                     }
                     item {
-                        BottomSheetItem(R.drawable.ic_download, "Download")
+                        BottomSheetDownloadButton(
+                            currentSongId = song.id,
+                            viewModel = viewModel
+                        )
                     }
                     item {
                         BottomSheetItem(R.drawable.ic_go_to_album, "Go to album")
@@ -1792,6 +1935,67 @@ class MainActivity: ComponentActivity() {
 
                 Spacer(modifier = Modifier.height(40.dp))
             }
+        }
+    }
+
+    @Composable
+    private fun BottomSheetDownloadButton(currentSongId: Int, viewModel: MainViewModel, modifier: Modifier = Modifier) {
+        val downloadProgress by viewModel.downloadProgress.collectAsState()
+        val isDownloading = downloadProgress.containsKey(currentSongId)
+        val isDownloaded by remember(currentSongId) {
+            derivedStateOf { viewModel.isDownloaded(currentSongId) }
+        }
+
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable(enabled = !isDownloading) {
+                    viewModel.downloadSong(currentSongId)
+                },
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier.size(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    isDownloading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.fillMaxSize(),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    isDownloaded -> {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_downloaded),
+                            contentDescription = "Downloaded",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.White
+                        )
+                    }
+                    else -> {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_download),
+                            contentDescription = "Download",
+                            modifier = Modifier.size(24.dp),
+                            tint = Color.White
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = when {
+                    isDownloading -> "Downloading..."
+                    isDownloaded -> "Downloaded"
+                    else -> "Download"
+                },
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
         }
     }
 

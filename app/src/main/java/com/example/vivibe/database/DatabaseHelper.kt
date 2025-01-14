@@ -6,38 +6,68 @@ import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import android.util.Log
+import com.example.vivibe.model.DownloadedSong
 
 class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME, null, DATABASE_VERSION) {
 
     companion object {
         private const val DATABASE_NAME = "youtube_music.db"
-        private const val DATABASE_VERSION = 4
+        private const val DATABASE_VERSION = 1
 
         // Table and column names
         private object Tables {
             const val SONG_PLAY_HISTORY = "songPlayHistory"
             const val ARTIST_SONG_PLAY = "artistSongPlay"
+            const val DOWNLOADED_SONGS = "downloadedSongs"
         }
 
         private object Columns {
-            const val SONG_ID = "song_id"
-            const val GOOGLE_ID = "google_id"
-            const val PLAY_COUNT = "play_count"
-            const val ARTIST_ID = "artist_id"
-            const val LAST_PLAYED = "last_played"
+            const val SONG_ID = "songId"
+            const val GOOGLE_ID = "googleId"
+            const val PLAY_COUNT = "playCount"
+            const val ARTIST_ID = "artistId"
+            const val LAST_PLAYED = "lastPlayed"
             const val LIKED = "liked"
             const val DISLIKED = "disliked"
             const val FOLLOWED = "followed"
+            const val TITLE = "title"
+            const val THUMBNAIL_PATH = "thumbnailPath"
+            const val ARTIST_NAME = "artistName"
+            const val AUDIO_PATH = "audioPath"
+            const val DURATION = "duration"
+            const val LYRICS = "lyrics"
+            const val VIEWS = "views"
+            const val LIKES = "likes"
+            const val DOMINANT_COLOR = "dominantColor"
+            const val DOWNLOAD_DATE = "downloadDate"
         }
 
         // SQL Queries
         private object Queries {
+            const val CREATE_DOWNLOADED_SONGS_TABLE = """
+                CREATE TABLE ${Tables.DOWNLOADED_SONGS} (
+                    ${Columns.SONG_ID} INTEGER PRIMARY KEY,
+                    ${Columns.GOOGLE_ID} TEXT NOT NULL,
+                    ${Columns.TITLE} TEXT NOT NULL,
+                    ${Columns.THUMBNAIL_PATH} TEXT NOT NULL,
+                    ${Columns.ARTIST_ID} INTEGER NOT NULL,
+                    ${Columns.ARTIST_NAME} TEXT NOT NULL,
+                    ${Columns.AUDIO_PATH} TEXT NOT NULL,
+                    ${Columns.DURATION} INTEGER NOT NULL,
+                    ${Columns.LYRICS} TEXT NOT NULL,
+                    ${Columns.VIEWS} INTEGER NOT NULL,
+                    ${Columns.LIKES} INTEGER NOT NULL,
+                    ${Columns.DOMINANT_COLOR} INTEGER NOT NULL,
+                    ${Columns.DOWNLOAD_DATE} INTEGER NOT NULL
+                )
+            """
             const val CREATE_SONG_HISTORY_TABLE = """
                 CREATE TABLE ${Tables.SONG_PLAY_HISTORY} (
                     ${Columns.SONG_ID} INTEGER,
                     ${Columns.GOOGLE_ID} TEXT,
                     ${Columns.PLAY_COUNT} INTEGER DEFAULT 1,
                     ${Columns.LIKED} BOOLEAN DEFAULT False,
+                    ${Columns.DISLIKED} BOOLEAN DEFAULT False,
                     ${Columns.LAST_PLAYED} DATETIME DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (${Columns.SONG_ID}, ${Columns.GOOGLE_ID})
                 )
@@ -52,11 +82,6 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                     ${Columns.LAST_PLAYED} DATETIME DEFAULT CURRENT_TIMESTAMP,
                     PRIMARY KEY (${Columns.ARTIST_ID}, ${Columns.GOOGLE_ID})
                 )
-            """
-
-            const val ADD_DISLIKE_COLUMN = """
-                ALTER TABLE ${Tables.SONG_PLAY_HISTORY}
-                ADD COLUMN ${Columns.DISLIKED} BOOLEAN DEFAULT False
             """
 
             const val GET_PLAY_COUNT = """
@@ -131,19 +156,14 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(Queries.CREATE_SONG_HISTORY_TABLE)
         db.execSQL(Queries.CREATE_ARTIST_SONG_PLAY_TABLE)
+        db.execSQL(Queries.CREATE_DOWNLOADED_SONGS_TABLE)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        when (oldVersion) {
-            2 -> {
-                db.execSQL(Queries.ADD_DISLIKE_COLUMN)
-            }
-            1 -> {
-                db.execSQL("DROP TABLE IF EXISTS ${Tables.SONG_PLAY_HISTORY}")
-                db.execSQL("DROP TABLE IF EXISTS ${Tables.ARTIST_SONG_PLAY}")
-                onCreate(db)
-            }
-        }
+        db.execSQL("DROP TABLE IF EXISTS ${Tables.SONG_PLAY_HISTORY}")
+        db.execSQL("DROP TABLE IF EXISTS ${Tables.ARTIST_SONG_PLAY}")
+        db.execSQL("DROP TABLE IF EXISTS ${Tables.DOWNLOADED_SONGS}")
+        onCreate(db)
     }
 
     /**
@@ -407,6 +427,143 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         }
     }
 
+    fun insertDownloadedSong(googleId: String, song: DownloadedSong): Boolean {
+        return try {
+            writableDatabase.use { db ->
+                // Begin transaction for better performance and reliability
+                db.beginTransaction()
+                try {
+                    val values = ContentValues().apply {
+                        put(Columns.SONG_ID, song.id)
+                        put(Columns.GOOGLE_ID, googleId)
+                        put(Columns.TITLE, song.title)
+                        put(Columns.THUMBNAIL_PATH, song.thumbnailPath)
+                        put(Columns.ARTIST_ID, song.artistId)
+                        put(Columns.ARTIST_NAME, song.artistName)
+                        put(Columns.AUDIO_PATH, song.audioPath)
+                        put(Columns.DURATION, song.duration)
+                        put(Columns.LYRICS, song.lyrics)
+                        put(Columns.VIEWS, song.views)
+                        put(Columns.LIKES, song.likes)
+                        put(Columns.DOMINANT_COLOR, song.dominantColor)
+                        put(Columns.DOWNLOAD_DATE, System.currentTimeMillis())
+                    }
+
+                    val id = db.insertWithOnConflict(
+                        Tables.DOWNLOADED_SONGS,
+                        null,
+                        values,
+                        SQLiteDatabase.CONFLICT_REPLACE
+                    )
+
+                    Log.d("DatabaseHelper", "Insert result: $id for songId: ${song.id}")
+
+                    if (id != -1L) {
+                        db.setTransactionSuccessful()
+                        true
+                    } else {
+                        false
+                    }
+                } finally {
+                    db.endTransaction()
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("DatabaseHelper", "Error inserting downloaded song", e)
+            false
+        }
+    }
+
+    fun getDownloadedSong(googleId: String, songId: Int): DownloadedSong? {
+        return try {
+            readableDatabase.use { db ->
+                db.query(
+                    Tables.DOWNLOADED_SONGS,
+                    null,
+                    "${Columns.SONG_ID} = ? AND ${Columns.GOOGLE_ID} = ?",
+                    arrayOf(songId.toString(), googleId),
+                    null,
+                    null,
+                    null
+                ).use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        DownloadedSong(
+                            id = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.SONG_ID)),
+                            title = cursor.getString(cursor.getColumnIndexOrThrow(Columns.TITLE)),
+                            thumbnailPath = cursor.getString(cursor.getColumnIndexOrThrow(Columns.THUMBNAIL_PATH)),
+                            artistId = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.ARTIST_ID)),
+                            artistName = cursor.getString(cursor.getColumnIndexOrThrow(Columns.ARTIST_NAME)),
+                            audioPath = cursor.getString(cursor.getColumnIndexOrThrow(Columns.AUDIO_PATH)),
+                            duration = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.DURATION)),
+                            lyrics = cursor.getString(cursor.getColumnIndexOrThrow(Columns.LYRICS)),
+                            views = cursor.getLong(cursor.getColumnIndexOrThrow(Columns.VIEWS)),
+                            likes = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.LIKES)),
+                            dominantColor = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.DOMINANT_COLOR)),
+                            downloadDate = cursor.getLong(cursor.getColumnIndexOrThrow(Columns.DOWNLOAD_DATE))
+                        )
+                    } else null
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun getAllDownloadedSongs(googleId: String): List<DownloadedSong> {
+        return try {
+            readableDatabase.use { db ->
+                db.query(
+                    Tables.DOWNLOADED_SONGS,
+                    null,
+                    "${Columns.GOOGLE_ID} = ?",
+                    arrayOf(googleId),
+                    null,
+                    null,
+                    "${Columns.DOWNLOAD_DATE} DESC"
+                ).use { cursor ->
+                    val songs = mutableListOf<DownloadedSong>()
+                    while (cursor.moveToNext()) {
+                        songs.add(
+                            DownloadedSong(
+                                id = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.SONG_ID)),
+                                title = cursor.getString(cursor.getColumnIndexOrThrow(Columns.TITLE)),
+                                thumbnailPath = cursor.getString(cursor.getColumnIndexOrThrow(Columns.THUMBNAIL_PATH)),
+                                artistId = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.ARTIST_ID)),
+                                artistName = cursor.getString(cursor.getColumnIndexOrThrow(Columns.ARTIST_NAME)),
+                                audioPath = cursor.getString(cursor.getColumnIndexOrThrow(Columns.AUDIO_PATH)),
+                                duration = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.DURATION)),
+                                lyrics = cursor.getString(cursor.getColumnIndexOrThrow(Columns.LYRICS)),
+                                views = cursor.getLong(cursor.getColumnIndexOrThrow(Columns.VIEWS)),
+                                likes = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.LIKES)),
+                                dominantColor = cursor.getInt(cursor.getColumnIndexOrThrow(Columns.DOMINANT_COLOR)),
+                                downloadDate = cursor.getLong(cursor.getColumnIndexOrThrow(Columns.DOWNLOAD_DATE))
+                            )
+                        )
+                    }
+                    songs
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    fun deleteDownloadedSong(googleId: String, songId: Int): Boolean {
+        return try {
+            writableDatabase.use { db ->
+                db.delete(
+                    Tables.DOWNLOADED_SONGS,
+                    "${Columns.SONG_ID} = ? AND ${Columns.GOOGLE_ID} = ?",
+                    arrayOf(songId.toString(), googleId)
+                ) > 0
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
 
     /**
      * Extension function to convert a cursor to a list of song IDs

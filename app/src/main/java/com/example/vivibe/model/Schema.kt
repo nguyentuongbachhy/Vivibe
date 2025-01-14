@@ -103,3 +103,18 @@ data class ArtistAlbum(
     val artist: ArtistReview,
     val songs: List<SongReview>
 )
+
+data class DownloadedSong(
+    val id: Int,
+    val title: String,
+    val thumbnailPath: String,
+    val artistId: Int,
+    val artistName: String,
+    val audioPath: String,
+    val duration: Int,
+    val lyrics: String,
+    val views: Long,
+    val likes: Int,
+    val dominantColor: Int,
+    val downloadDate: Long = System.currentTimeMillis()
+)

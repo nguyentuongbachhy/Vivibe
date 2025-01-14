@@ -3,6 +3,7 @@ package com.example.vivibe.api.song
 import android.content.Context
 import com.example.vivibe.R
 import com.example.vivibe.api.RetrofitClient
+import com.example.vivibe.model.DownloadedSong
 
 
 class SongService(context: Context, token: String) {
@@ -136,6 +137,20 @@ class SongService(context: Context, token: String) {
                 null
             }
         }catch (e:Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    suspend fun fetchDownloadedSong(songId: Int): DownloadedSongResponse? {
+        return try {
+            val response = api.fetchDownloadedSong(songId)
+            if(response.isSuccessful) {
+                response.body()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
             e.printStackTrace()
             null
         }

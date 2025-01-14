@@ -3,6 +3,8 @@ package com.example.vivibe.manager
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -60,10 +62,20 @@ class SharedExoPlayer private constructor(private val context: Context) {
 
     private fun initialize() {
         playerListener = createPlayerListener()
-        player = ExoPlayer.Builder(context).build().apply {
-            repeatMode = Player.REPEAT_MODE_OFF
-            shuffleModeEnabled = false
-        }
+        player = ExoPlayer.Builder(context)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(C.USAGE_MEDIA)
+                    .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                    .build(),
+                true
+            )
+            .build()
+            .apply {
+                repeatMode = Player.REPEAT_MODE_OFF
+                shuffleModeEnabled = false
+            }
+
 
         player?.addListener(playerListener!!)
 

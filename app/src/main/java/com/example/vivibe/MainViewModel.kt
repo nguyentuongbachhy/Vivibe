@@ -11,19 +11,28 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.vivibe.api.song.SongClient
+import com.example.vivibe.components.song.DownloadManager
 import com.example.vivibe.components.song.PlaybackService
 import com.example.vivibe.database.DatabaseHelper
 import com.example.vivibe.manager.SharedExoPlayer
 import com.example.vivibe.manager.UserManager
+import com.example.vivibe.model.DownloadedSong
 import com.example.vivibe.model.PlaySong
 import com.example.vivibe.model.QuickPicksSong
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class MainViewModel(private val appContext: Context, private val userManager: UserManager, private val exoPlayer: SharedExoPlayer) : ViewModel() {
     private val dbHelper = DatabaseHelper(appContext)
     private val songClient = MutableStateFlow<SongClient?>(null)
+    private val downloadManager = MutableStateFlow<DownloadManager?>(null)
+
+    private val _downloadedSongs = MutableStateFlow<Set<Int>>(emptySet())
+
+    private val _downloadProgress = MutableStateFlow<Map<Int, Float>>(emptyMap())
+    val downloadProgress: StateFlow<Map<Int, Float>> = _downloadProgress
 
     private val _showBottomSheet = MutableStateFlow(false)
     val showBottomSheet: StateFlow<Boolean> get() = _showBottomSheet
@@ -64,6 +73,19 @@ class MainViewModel(private val appContext: Context, private val userManager: Us
 
     init {
         initializeUserState()
+        refreshDownloadedSongs()
+    }
+
+    private fun refreshDownloadedSongs() {
+        viewModelScope.launch {
+            val googleId = userManager.getGoogleId() ?: return@launch
+            val songs = dbHelper.getAllDownloadedSongs(googleId)
+            _downloadedSongs.value = songs.map { it.id }.toSet()
+        }
+    }
+
+    fun isDownloaded(songId: Int): Boolean {
+        return _downloadedSongs.value.contains(songId)
     }
 
     private fun initializeUserState() {
@@ -71,6 +93,11 @@ class MainViewModel(private val appContext: Context, private val userManager: Us
             userManager.userState.collect { user ->
                 handlePlaybackService(user?.premium == 1)
                 songClient.value = SongClient(appContext, user?.token.orEmpty())
+                if (songClient.value != null) {
+                    downloadManager.value = DownloadManager(appContext, dbHelper,
+                        songClient.value!!
+                    )
+                }
             }
         }
     }
@@ -235,6 +262,55 @@ class MainViewModel(private val appContext: Context, private val userManager: Us
     fun playOneInListSong(songId: Int) = exoPlayer.handlePlayOneInListSong(songId)
     fun seekToProgress(progress: Float) = exoPlayer.seekToProgress(progress)
     fun reset() = exoPlayer.reset()
+
+    fun downloadSong(songId: Int) {
+        viewModelScope.launch {
+            try {
+                val googleId = userManager.getGoogleId() ?: return@launch
+
+                _downloadProgress.update { it + (songId to 0f) }
+
+                downloadManager.value?.downloadSong(googleId, songId) { progress ->
+                    _downloadProgress.update { it + (songId to progress) }
+                }
+
+                    ?.onSuccess {
+                        // Add to downloaded songs set
+                        _downloadedSongs.update { it + songId }
+                        refreshDownloadedSongs()
+                        _downloadProgress.update { it - songId }
+                        println("$TAG: Song downloaded successfully")
+                    }
+                    ?.onFailure { error ->
+                        _downloadProgress.update { it - songId }
+                        Log.e(TAG, "Failed to download song", error)
+                    }
+            } catch (e: Exception) {
+                _downloadProgress.update { it - songId }
+                Log.e(TAG, "Error during download", e)
+            }
+        }
+    }
+
+    fun getDownloadedSongs(): List<DownloadedSong> {
+        val googleId = userManager.getGoogleId() ?: return emptyList()
+        return downloadManager.value!!.getAllDownloadedSongs(googleId)
+    }
+
+    fun deleteDownloadedSong(songId: Int) {
+        viewModelScope.launch {
+            val googleId = userManager.getGoogleId() ?: return@launch
+            downloadManager.value!!.deleteDownloadedSong(googleId, songId)
+        }
+    }
+
+    fun updateDownloadProgress(songId: Int, progress: Float) {
+        viewModelScope.launch {
+            _downloadProgress.update { current ->
+                current + (songId to progress)
+            }
+        }
+    }
 
     override fun onCleared() {
         super.onCleared()

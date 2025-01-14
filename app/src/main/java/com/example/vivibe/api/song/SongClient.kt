@@ -177,4 +177,22 @@ class SongClient(context: Context, token: String?) {
             emptyList()
         }
     }
+
+    suspend fun fetchDownloadedSong(songId: Int): PlaySong? {
+        if(songService == null) return null
+        return try {
+            val response = songService.fetchDownloadedSong(songId)
+            if(response?.err == 0) {
+                response.data?.also {
+                    println("$tag Downloaded song fetched successfully")
+                }
+            } else {
+                print("$tag Error: ${response?.msg}")
+                null
+            }
+        } catch (e: Exception) {
+            print("$tag Error: ${e.message}")
+            null
+        }
+    }
 }

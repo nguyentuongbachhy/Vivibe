@@ -65,6 +65,12 @@ data class PlayingSongResponse(
     val data: List<PlaySong>? = null
 )
 
+data class DownloadedSongResponse(
+    val err: Int,
+    val msg: String,
+    val data: PlaySong?
+)
+
 interface SongInterface {
     @GET("/api/v1/song/get-speed-dial")
     suspend fun fetchSpeedDialSongs(): Response<SpeedDialResponse>
@@ -95,4 +101,7 @@ interface SongInterface {
 
     @GET("/api/v1/song/get-detail-song")
     suspend fun fetchPlayingSong(@Query("songId") songId: Int): Response<PlayingSongResponse>
+
+    @GET("/api/v1/song/get-downloaded-song")
+    suspend fun fetchDownloadedSong(@Query("songId") songId: Int): Response<DownloadedSongResponse>
 }
