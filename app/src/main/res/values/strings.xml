@@ -1,4 +1,10 @@
 <resources>
     <string name="app_name">ViVibe</string>
     <string name="BASE_URL">http://192.168.137.1:2701</string>
+    <string name="previous">Previous</string>
+    <string name="play_pause">Play/Pause</string>
+    <string name="next">Next</string>
+    <string name="image">image</string>
+    <string name="shuffle">Shuffle</string>
+    <string name="repeat">Repeat</string>
 </resources>

@@ -46,10 +46,8 @@ class HomeComponentViewModel @Inject constructor(
 
 
     init {
-        println("HomeComponentViewModel initialized")
         viewModelScope.launch {
-            println("Starting initial data load")
-            reloadPage()
+            loadStuff()
         }
     }
 
@@ -176,7 +174,7 @@ class HomeComponentViewModel @Inject constructor(
         viewModelScope.launch {
             val fetchedSongsByGenre = songClient.fetchSongsByGenre(genreId)
             if (fetchedSongsByGenre.isNotEmpty()) {
-                savedStateHandle["genre_songs"] = fetchedSongsByGenre
+                _state.value = _state.value.copy(genreSongs = fetchedSongsByGenre)
             }
         }
     }

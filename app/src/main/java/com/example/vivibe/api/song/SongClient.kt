@@ -127,6 +127,7 @@ class SongClient(context: Context, token: String?) {
         return try {
             if(songService == null) return emptyList()
             val response = songService.fetchSongsByGenre(genreId)
+            println("Fetched songs by genre response: $response")
             if(response?.err == 0) {
                 response.data?.also {
                     println("$tag Songs by genre fetched successfully")

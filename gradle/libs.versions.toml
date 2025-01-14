@@ -6,6 +6,7 @@ constraintlayoutCompose = "1.1.0"
 converterGson = "2.9.0"
 firebaseBom = "33.7.0"
 foundation = "1.7.6"
+glide = "4.16.0"
 gson = "2.11.0"
 kotlin = "1.9.0"
 coreKtx = "1.15.0"
@@ -43,6 +44,7 @@ androidx-navigation-compose = { module = "androidx.navigation:navigation-compose
 converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "converterGson" }
 firebase-auth-ktx = { module = "com.google.firebase:firebase-auth-ktx" }
 firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 io-coil-kt-coil-compose = { module = "io.coil-kt:coil-compose", version.ref = "coilKtCoilCompose" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }

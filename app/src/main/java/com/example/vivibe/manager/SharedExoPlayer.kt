@@ -177,6 +177,13 @@ class SharedExoPlayer private constructor(private val context: Context) {
         }
     }
 
+    fun seekTo(value: Int) {
+        player?.let { exoPlayer ->
+            val seekPosition = getDurationInMillis(value)
+            exoPlayer.seekTo(seekPosition)
+        }
+    }
+
     fun handleNextTrack() {
         val songs = _listSong.value
         if (songs.isEmpty()) return
@@ -192,12 +199,19 @@ class SharedExoPlayer private constructor(private val context: Context) {
 
         val currentIndex = songs.indexOfFirst { it.id == _currentSongId.value }
 
-        return when {
-            _isShuffleEnabled.value -> getRandomSong(songs, currentIndex)
-            currentIndex < songs.size - 1 -> songs[currentIndex + 1]
-            _isRepeatEnabled.value == 1 -> songs[0]
-            else -> null
+        if(_isShuffleEnabled.value) return getRandomSong(songs, currentIndex)
+
+        if (_isRepeatEnabled.value == 0) {
+            return if (currentIndex < songs.size - 1) {
+                songs[currentIndex + 1]
+            } else null
         }
+
+        if(_isRepeatEnabled.value == 1) {
+            return if(currentIndex < songs.size - 1) songs[currentIndex + 1] else songs[0]
+        }
+
+        return songs[currentIndex]
     }
 
     private fun getRandomSong(songs: List<PlaySong>, excludeIndex: Int): PlaySong {
@@ -223,20 +237,29 @@ class SharedExoPlayer private constructor(private val context: Context) {
 
     fun handleShuffle() {
         player?.let { exoPlayer ->
-            _isShuffleEnabled.value = !_isShuffleEnabled.value
-            exoPlayer.shuffleModeEnabled = _isShuffleEnabled.value
+            if(_isShuffleEnabled.value) {
+                _isShuffleEnabled.value = false
+                exoPlayer.shuffleModeEnabled = false
+            } else {
+                _isShuffleEnabled.value = true
+                exoPlayer.shuffleModeEnabled = true
+
+            }
         }
     }
 
     fun handleRepeat() {
         player?.let { exoPlayer ->
-            _isRepeatEnabled.value = (_isRepeatEnabled.value + 1) % 3
-
-            exoPlayer.repeatMode = when(_isRepeatEnabled.value) {
-                0 -> Player.REPEAT_MODE_OFF
-                1 -> Player.REPEAT_MODE_ALL
-                2 -> Player.REPEAT_MODE_ONE
-                else -> Player.REPEAT_MODE_OFF
+            if(_isRepeatEnabled.value == 2) {
+                   _isRepeatEnabled.value = 0
+                exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
+            }
+            else if (_isRepeatEnabled.value == 1) {
+                _isRepeatEnabled.value = 2
+                exoPlayer.repeatMode = Player.REPEAT_MODE_ONE
+            } else {
+                _isRepeatEnabled.value = 1
+                exoPlayer.repeatMode = Player.REPEAT_MODE_OFF
             }
         }
     }

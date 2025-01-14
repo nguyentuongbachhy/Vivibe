@@ -84,18 +84,6 @@ data class GenreSong(
     val artist: ArtistReview
 )
 
-data class GenreSongs(
-    val genreId: Int,
-    val genreName: String,
-    val songs: List<GenreSong>
-)
-
-data class ArtistAlbum(
-    val title: String,
-    val artist: ArtistReview,
-    val songs: List<SongReview>
-)
-
 data class Genre(
     val id: Int,
     val name: String
@@ -104,3 +92,14 @@ data class Genre(
         val ALL: Genre = Genre(0, "All")
     }
 }
+
+data class GenreSongs(
+    val genre: Genre,
+    val songs: List<GenreSong>
+)
+
+data class ArtistAlbum(
+    val title: String,
+    val artist: ArtistReview,
+    val songs: List<SongReview>
+)

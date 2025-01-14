@@ -942,7 +942,7 @@ class HomeComponent(private val viewModel: HomeComponentViewModel, private val e
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Top),
         ) {
             Text(
-                text = "$mainGenreName - ${genreSong.genreName}",
+                text = "${mainGenreName.replaceFirstChar { it.uppercaseChar() }} - ${genreSong.genre.name.replaceFirstChar { it.uppercaseChar() }}",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White

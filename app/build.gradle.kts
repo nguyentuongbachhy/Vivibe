@@ -83,7 +83,7 @@ dependencies {
     implementation(libs.media3.ui)
     implementation(libs.media3.common)
     implementation(libs.androidx.constraintlayout.compose)
-
+    implementation(libs.glide)
 
     testImplementation(libs.junit)
 
