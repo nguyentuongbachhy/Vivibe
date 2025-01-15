@@ -24,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+
 class MainViewModel(private val appContext: Context, private val userManager: UserManager, private val exoPlayer: SharedExoPlayer) : ViewModel() {
     private val dbHelper = DatabaseHelper(appContext)
     private val songClient = MutableStateFlow<SongClient?>(null)
@@ -277,8 +278,8 @@ class MainViewModel(private val appContext: Context, private val userManager: Us
                     ?.onSuccess {
                         // Add to downloaded songs set
                         _downloadedSongs.update { it + songId }
-                        refreshDownloadedSongs()
                         _downloadProgress.update { it - songId }
+                        refreshDownloadedSongs()
                         println("$TAG: Song downloaded successfully")
                     }
                     ?.onFailure { error ->
@@ -299,18 +300,62 @@ class MainViewModel(private val appContext: Context, private val userManager: Us
 
     fun deleteDownloadedSong(songId: Int) {
         viewModelScope.launch {
-            val googleId = userManager.getGoogleId() ?: return@launch
-            downloadManager.value!!.deleteDownloadedSong(googleId, songId)
-        }
-    }
+            try {
+                val googleId = userManager.getGoogleId() ?: return@launch
+                val isSuccess = downloadManager.value!!.deleteDownloadedSong(googleId, songId)
+                if(isSuccess) {
+                    _downloadedSongs.update { it - songId }
+                    refreshDownloadedSongs()
 
-    fun updateDownloadProgress(songId: Int, progress: Float) {
-        viewModelScope.launch {
-            _downloadProgress.update { current ->
-                current + (songId to progress)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error deleting downloaded song", e)
             }
         }
     }
+
+    fun shareSong(songId: Int) {
+        viewModelScope.launch {
+            if(songClient.value == null) return@launch
+            try {
+                val song = songClient.value!!.fetchDownloadedSong(songId) ?: return@launch
+
+                val songData = EncryptionUtils.createSongData(
+                    title = song.title,
+                    artistName = song.artist.name,
+                    thumbnailUrl = song.thumbnailUrl,
+                    audioUrl = song.audio,
+                    views = song.views
+                )
+
+                val encryptedData = EncryptionUtils.encrypt(songData)
+
+                val shareUrl = "https://nguyentuongbachhy.github.io/youtube_music/?d=$encryptedData"
+
+                val shareText = """
+                    🎵 ${song.title}
+                    🎤 ${song.artist.name}
+                                    
+                    Listen now: $shareUrl
+                """.trimIndent()
+
+                val shareIntent = Intent().apply {
+                    action = Intent.ACTION_SEND
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                    // Optional: Thêm title cho share dialog
+                    putExtra(Intent.EXTRA_TITLE, "${song.title} - ${song.artist.name}")
+                }
+
+                val chooserIntent = Intent.createChooser(shareIntent, "Share via")
+                chooserIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                appContext.startActivity(chooserIntent)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error sharing song", e)
+            }
+        }
+    }
+
 
     override fun onCleared() {
         super.onCleared()

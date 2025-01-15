@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.example.vivibe.MainActivity
@@ -93,6 +94,7 @@ class Home(private val appContext: Context) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .zIndex(0f)
                     .padding(start = 8.dp, end = 0.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp)

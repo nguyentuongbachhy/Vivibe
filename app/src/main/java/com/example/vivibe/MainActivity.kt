@@ -595,7 +595,7 @@ class MainActivity: ComponentActivity() {
                             .fillMaxWidth()
                             .layoutId("navigationBar")
                             .padding(8.dp)
-                            .zIndex(1.5f * miniToExpandedProgress)
+                            .zIndex(2f)
                             .alpha((miniToExpandedProgress * (1f - expandedToTopBarProgress)).pow(20)),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
@@ -822,14 +822,13 @@ class MainActivity: ComponentActivity() {
                                 text = "Save"
                             )
 
-                            OptionItem(
-                                icon = R.drawable.ic_share,
-                                iconSize = 24,
-                                text = "Share"
+                            ShareButton(
+                                currentSongId = currentSongId,
+                                viewModel = viewModel
                             )
 
                             DownloadButton(
-                                currentSongId = currentSong.id,
+                                currentSongId = currentSongId,
                                 viewModel = viewModel
                             )
                         }
@@ -1173,17 +1172,6 @@ class MainActivity: ComponentActivity() {
             }
         }
 
-        val infiniteTransition = rememberInfiniteTransition(label = "download_rotation")
-        val rotation by infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 360f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(2000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart
-            ),
-            label = "download_rotation"
-        )
-
         Row(
             modifier = modifier
                 .height(36.dp)
@@ -1207,7 +1195,11 @@ class MainActivity: ComponentActivity() {
                 )
                 .padding(vertical = 4.dp, horizontal = 16.dp)
                 .clickable(enabled = !isDownloading) {
-                    viewModel.downloadSong(currentSongId)
+                    if(isDownloaded) {
+                        viewModel.deleteDownloadedSong(currentSongId)
+                    } else {
+                        viewModel.downloadSong(currentSongId)
+                    }
                 },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
@@ -1263,7 +1255,52 @@ class MainActivity: ComponentActivity() {
     }
 
     @Composable
-    private fun OptionItem(icon: Int, iconSize: Int, text: String) {
+    private fun ShareButton(currentSongId: Int, viewModel: MainViewModel) {
+        Row(
+            modifier = Modifier
+                .clickable { viewModel.shareSong(currentSongId) }
+                .height(36.dp)
+                .clip(
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
+                .padding(start = 8.dp)
+                .background(
+                    Color.White.copy(0.3f),
+                    RoundedCornerShape(
+                        topStart = 100f,
+                        topEnd = 100f,
+                        bottomStart = 100f,
+                        bottomEnd = 100f
+                    )
+                )
+                .padding(vertical = 4.dp, horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)
+        ) {
+
+            Icon(
+                painter = painterResource(R.drawable.ic_share),
+                contentDescription = "Share",
+                tint = Color.White,
+                modifier = Modifier.size(20.dp),
+            )
+
+            Text(
+                text = "Share",
+                color = Color.White,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+
+    @Composable
+    private fun OptionItem(icon: Int, iconSize: Int = 24, text: String) {
         Row(
             modifier = Modifier
                 .height(36.dp)
@@ -1887,21 +1924,29 @@ class MainActivity: ComponentActivity() {
                     item {
                         BottomSheetCard(
                             icon = R.drawable.ic_play_next,
-                            title = "Play next"
+                            title = "Play next",
+                            currentSongId = song.id,
+                            onClick = {}
                         )
                     }
 
                     item {
                         BottomSheetCard(
                             icon = R.drawable.ic_save_to_playlist,
-                            title = "Save to playlist"
-                        )
+                            title = "Save to playlist",
+                            currentSongId = song.id,
+                            onClick = {}
+                            )
                     }
 
                     item {
                         BottomSheetCard(
                             icon = R.drawable.ic_share,
-                            title = "Share"
+                            title = "Share",
+                            currentSongId = song.id,
+                            onClick = {
+                                viewModel.shareSong(it)
+                            }
                         )
                     }
                 }
@@ -1950,7 +1995,11 @@ class MainActivity: ComponentActivity() {
             modifier = modifier
                 .fillMaxWidth()
                 .clickable(enabled = !isDownloading) {
-                    viewModel.downloadSong(currentSongId)
+                    if(isDownloaded) {
+                        viewModel.deleteDownloadedSong(currentSongId)
+                    } else {
+                        viewModel.downloadSong(currentSongId)
+                    }
                 },
             horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.Start),
             verticalAlignment = Alignment.CenterVertically
@@ -2025,9 +2074,9 @@ class MainActivity: ComponentActivity() {
     }
 
     @Composable
-    private fun BottomSheetCard(icon: Int, title: String) {
+    private fun BottomSheetCard(icon: Int, title: String, currentSongId: Int, onClick: (Int) -> Unit) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().clickable { onClick(currentSongId) },
             verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
