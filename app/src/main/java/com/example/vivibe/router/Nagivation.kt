@@ -63,7 +63,8 @@ fun BottomNavigation(navController: NavController, modifier: Modifier) {
         HomeRouter,
         SamplesRouter,
         ExploreRouter,
-        LibraryRouter
+        LibraryRouter,
+        UpgradeRouter
     )
 
     val currentDestination = navController.currentBackStackEntryAsState().value?.destination

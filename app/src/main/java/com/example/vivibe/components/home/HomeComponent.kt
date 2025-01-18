@@ -44,6 +44,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -53,7 +54,9 @@ import com.example.vivibe.R
 import com.example.vivibe.model.User
 
 class HomeComponent(private val viewModel: HomeComponentViewModel) {
+
     @Composable
+
     fun GenresScreen() {
         val genres = viewModel.genreList.collectAsState()
 
@@ -101,8 +104,6 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
             )
         }
     }
-
-
     @Composable
     fun QuickPicksScreen(onSongMoreClick: (QuickPicksSong) -> Unit, onPlayMusicNavigate: (Int) -> Unit) {
 
@@ -388,6 +389,7 @@ class HomeComponent(private val viewModel: HomeComponentViewModel) {
     }
 
     @Composable
+
     private fun SpeedDialSongItem(
         songId: Int,
         thumbnail: String,

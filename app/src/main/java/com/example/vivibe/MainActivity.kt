@@ -135,6 +135,7 @@ class MainActivity : ComponentActivity() {
         makeStatusBarTransparent()
         setContent {
             AppScreen()
+
         }
     }
 
@@ -142,6 +143,7 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("CoroutineCreationDuringComposition")
     @Composable
     private fun AppScreen() {
+
         val scope = rememberCoroutineScope()
         val navController = rememberNavController()
         val saveableStateHolder = rememberSaveableStateHolder()
@@ -213,6 +215,11 @@ class MainActivity : ComponentActivity() {
                                     Explore().ExploreScreen()
                                 }
                             }
+                            composable(UpgradeRouter.route){
+                                saveableStateHolder.SaveableStateProvider(UpgradeRouter.route) {
+                                    Upgrade().UpgradeScreen(navController = navController)
+                                }
+                            }
 
                             composable(LibraryRouter.route) {
                                 saveableStateHolder.SaveableStateProvider(LibraryRouter.route) {
@@ -229,6 +236,11 @@ class MainActivity : ComponentActivity() {
                             composable(SearchRouter.route) {
                                 saveableStateHolder.SaveableStateProvider(SearchRouter.route) {
                                     Search().SearchScreen()
+                                }
+                            }
+                            composable("payment") {
+                                saveableStateHolder.SaveableStateProvider(SearchRouter.route) {
+                                    PaymentScreen()
                                 }
                             }
                         }
