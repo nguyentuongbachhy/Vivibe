@@ -1,29 +1,48 @@
 package com.example.vivibe.pages.home
 
 import android.content.Context
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vivibe.model.User
+import com.example.vivibe.api.genre.GenreClient
 import com.example.vivibe.api.login.GoogleSignInClient
 import com.example.vivibe.api.song.SongClient
 import com.example.vivibe.components.home.HomeComponentViewModel
-import com.example.vivibe.manager.GlobalStateManager
+import com.example.vivibe.database.DatabaseHelper
+import com.example.vivibe.manager.SharedExoPlayer
+import com.example.vivibe.manager.UserManager
+import com.example.vivibe.model.Genre
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class HomeViewModel(appContext: Context, songClient: SongClient) : ViewModel() {
-    private val googleAuthClient = GoogleSignInClient(appContext)
 
-    private val _showTokenExpiredDialog = MutableStateFlow(false)
-    val showTokenExpiredDialog: StateFlow<Boolean> get() = _showTokenExpiredDialog
+class HomeViewModel(appContext: Context, exoPlayer: SharedExoPlayer) : ViewModel() {
+    data class HomeState(
+        val isRefreshing: Boolean = false,
+        val showTokenExpiredDialog: Boolean = false,
+        val selectedGenre: Genre = Genre.ALL
+    )
 
-    private val _homeComponentViewModel = MutableStateFlow(HomeComponentViewModel(appContext, songClient))
+    private val userManager = UserManager.getInstance(appContext)
+
+    private val _state = MutableStateFlow(HomeState())
+    val state = _state.asStateFlow()
+
+    private val savedStateHandle = SavedStateHandle()
+    private val _homeComponentViewModel = MutableStateFlow(HomeComponentViewModel(
+        savedStateHandle,
+        SongClient(appContext, userManager.getToken()),
+        GenreClient(appContext, userManager.getToken()),
+        DatabaseHelper(appContext),
+        userManager = userManager,
+        exoPlayer = exoPlayer
+    ))
     val homeComponentViewModel: StateFlow<HomeComponentViewModel> get() = _homeComponentViewModel
 
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> get() = _isRefreshing
+    private val googleAuthClient = GoogleSignInClient(appContext)
 
     init {
         observeTokenExpiration()
@@ -31,45 +50,52 @@ class HomeViewModel(appContext: Context, songClient: SongClient) : ViewModel() {
 
     fun loadHomeComponent() {
         viewModelScope.launch {
-            _isRefreshing.value = true
-            delay(500)
+            _state.value = _state.value.copy(isRefreshing = true)
+            delay(250)
             reload()
-            delay(500)
-            _isRefreshing.value = false
+            delay(250)
+            _state.value = _state.value.copy(isRefreshing = false)
         }
     }
 
     fun reload() {
         viewModelScope.launch {
-            _homeComponentViewModel.value.fetchSpeedDial()
-            _homeComponentViewModel.value.fetchQuickPicks()
+            _homeComponentViewModel.value.reloadPage()
         }
     }
 
     private fun observeTokenExpiration() {
         viewModelScope.launch {
-            GlobalStateManager.tokenExpired.collect {
-                if(it) {
-                    _showTokenExpiredDialog.value = true
-                    GlobalStateManager.setTokenExpired()
+            userManager.tokenExpired.collect { isExpired ->
+                if(isExpired) {
+                    _state.value = _state.value.copy(showTokenExpiredDialog = true)
+                    userManager.setTokenExpired()
                 }
             }
         }
     }
 
-    fun dismissTokenExpiredDialog() {
-        _showTokenExpiredDialog.value = false
+    fun updateSelectedGenre(genre: Genre) {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(selectedGenre = genre)
+        }
     }
 
-    suspend fun signIn(): Boolean {
-        val success = googleAuthClient.signIn()
+    fun dismissTokenExpiredDialog() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(showTokenExpiredDialog = false)
+        }
+    }
+
+    suspend fun signIn(activityContext: Context): Boolean {
+        val success = googleAuthClient.signIn(activityContext)
         if (success) {
-            GlobalStateManager.resetTokenExpired()
+            userManager.resetTokenExpired()
         }
         return success
     }
 
     suspend fun signOut(): Boolean {
-         return googleAuthClient.signOut()
+        return googleAuthClient.signOut()
     }
 }

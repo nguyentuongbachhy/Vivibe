@@ -62,11 +62,12 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.media)
     implementation(libs.firebase.auth)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth.ktx)
     implementation(libs.play.services.auth)
-    implementation(libs.androidx.navigation.compose)
     implementation(libs.googleid)
     implementation(libs.gson)
     implementation(libs.retrofit)
@@ -88,8 +89,7 @@ dependencies {
         "exclude" to listOf("")
     )))
     implementation(libs.firebase.functions.ktx)
-
-
+    implementation(libs.glide)
     testImplementation(libs.junit)
 
     androidTestImplementation(libs.androidx.junit)

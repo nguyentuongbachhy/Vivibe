@@ -1,33 +1,54 @@
 package com.example.vivibe.model
 
 data class User(
-    val token: String?,
-    val googleId: String?,
-    val name: String?,
-    val email: String?,
-    val profilePictureUri: String?,
-    val premium: Int
+    val token: String? = null,
+    val googleId: String? = null,
+    val name: String = "",
+    val email: String = "",
+    val profilePictureUri: String = "",
+    val premium: Int = 0
+) {
+    fun isValid(): Boolean = !token.isNullOrBlank() && !googleId.isNullOrBlank()
+}
+
+data class ArtistReview(
+    val id: Int,
+    val name: String,
+    val thumbnail: String
 )
 
-data class Artist(
+data class ArtistDetail(
     val id: Int,
-    val name: String
+    val name: String,
+    val thumbnail: String,
+    val description: String,
+    val followers: Int
+)
+
+data class FullInfoArtist(
+    val title: String,
+    val likes: Int,
+    val createdAt: String,
+    val artist: ArtistDetail,
+    val songs: List<SongDetail>
 )
 
 data class SpeedDialSong(
     val id: Int,
     val title: String,
     val thumbnailUrl: String,
+    val artistId: Int
 )
 
 data class PlaySong(
     val id: Int,
     val title: String,
     val thumbnailUrl: String,
-    val artist: Artist,
+    val artist: ArtistReview,
     val audio: String,
+    val duration: Int,
     val lyrics: String,
-    val views: Int,
+    val views: Long,
     val likes: Int,
     val dominantColor: Int
 )
@@ -36,11 +57,64 @@ data class QuickPicksSong(
     val id: Int,
     val title: String,
     val thumbnailUrl: String,
-    val views: Int,
-    val artist: Artist
+    val views: Long,
+    val artist: ArtistReview
+)
+
+data class SongReview(
+    val id: Int,
+    val title: String,
+    val thumbnailUrl: String,
+)
+
+data class SongDetail(
+    val id: Int,
+    val title: String,
+    val thumbnailUrl: String,
+    val duration: Int,
+    val views: Long
+)
+
+data class GenreSong(
+    val id: Int,
+    val title: String,
+    val thumbnailUrl: String,
+    val duration: Int,
+    val views: Long,
+    val artist: ArtistReview
 )
 
 data class Genre(
     val id: Int,
     val name: String
+) {
+    companion object {
+        val ALL: Genre = Genre(0, "All")
+    }
+}
+
+data class GenreSongs(
+    val genre: Genre,
+    val songs: List<GenreSong>
+)
+
+data class ArtistAlbum(
+    val title: String,
+    val artist: ArtistReview,
+    val songs: List<SongReview>
+)
+
+data class DownloadedSong(
+    val id: Int,
+    val title: String,
+    val thumbnailPath: String,
+    val artistId: Int,
+    val artistName: String,
+    val audioPath: String,
+    val duration: Int,
+    val lyrics: String,
+    val views: Long,
+    val likes: Int,
+    val dominantColor: Int,
+    val downloadDate: Long = System.currentTimeMillis()
 )

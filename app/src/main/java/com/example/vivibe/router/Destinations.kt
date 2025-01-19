@@ -22,6 +22,14 @@ object HomeRouter: Destinations {
     override val iconOutline: Int = R.drawable.ic_home_outline
 }
 
+object ArtistRouter: Destinations {
+    const val artistIdArg = "artistId"
+    override val route: String = "artist"
+    override val title: String = "Artist"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+
 object ExploreRouter: Destinations {
     override val route: String = "explore"
     override val title: String = "Explore"
@@ -55,18 +63,9 @@ object SearchRouter: Destinations {
     override val title: String = "Search"
     override val iconFilled: Int = R.drawable.ic_search
     override val iconOutline: Int = R.drawable.ic_search
-}
 
-object PlayMusicRouter: Destinations {
-    const val songIdArg = "song_id"
-    override val route: String = "play_music"
-    override val title: String = ""
-    override val iconFilled: Int = 0
-    override val iconOutline: Int = 0
-}
-object PaymentRouter: Destinations {
+  object PaymentRouter: Destinations {
     override val route: String = "payment"
     override val title: String = "Payment"
     override val iconFilled: Int = 0
     override val iconOutline: Int = 0
-}
