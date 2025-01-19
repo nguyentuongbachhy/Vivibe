@@ -190,6 +190,7 @@ class MainActivity: ComponentActivity() {
         makeStatusBarTransparent()
 
         setContent {
+
             AppScreen(
                 viewModel =viewModel,
                 homeViewModel = homeViewModel,
@@ -396,6 +397,11 @@ class MainActivity: ComponentActivity() {
                                                 )
                                         }
                                     }
+                                }
+                            }
+                            composable(UpgradeRouter.route){
+                                saveableStateHolder.SaveableStateProvider(UpgradeRouter.route) {
+                                    Upgrade().UpgradeScreen(navController = navController)
                                 }
                             }
                         }

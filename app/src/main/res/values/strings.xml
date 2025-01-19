@@ -7,4 +7,5 @@
     <string name="image">image</string>
     <string name="shuffle">Shuffle</string>
     <string name="repeat">Repeat</string>
+    <string name="title_activity_payment">PaymentActivity</string>
 </resources>

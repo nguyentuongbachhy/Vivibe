@@ -49,6 +49,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -132,8 +133,6 @@ class HomeComponent(private val viewModel: HomeComponentViewModel, private val e
             )
         }
     }
-
-
 
     @Composable
     fun QuickPicksScreen(onSongMoreClick: (QuickPicksSong) -> Unit, onPlayMusicNavigate: (Int) -> Unit) {
@@ -449,6 +448,7 @@ class HomeComponent(private val viewModel: HomeComponentViewModel, private val e
 
     @SuppressLint("StateFlowValueCalledInComposition")
     @Composable
+
     private fun SpeedDialSongItem(
         songId: Int,
         thumbnail: String,

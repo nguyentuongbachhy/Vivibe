@@ -9,7 +9,12 @@ interface Destinations {
     val iconOutline: Int
 }
 
-
+object UpgradeRouter: Destinations {
+    override val route: String = "upgrade"
+    override val title: String = "Upgrade"
+    override val iconFilled: Int = R.drawable.ic_premium_filled
+    override val iconOutline: Int = R.drawable.ic_premium_outline
+}
 object HomeRouter: Destinations {
     override val route: String = "home"
     override val title: String = "Home"
@@ -58,4 +63,9 @@ object SearchRouter: Destinations {
     override val title: String = "Search"
     override val iconFilled: Int = R.drawable.ic_search
     override val iconOutline: Int = R.drawable.ic_search
-}
+
+  object PaymentRouter: Destinations {
+    override val route: String = "payment"
+    override val title: String = "Payment"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
