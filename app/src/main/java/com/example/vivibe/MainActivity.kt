@@ -120,6 +120,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.navigation.NavController
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -345,7 +346,7 @@ class MainActivity: ComponentActivity() {
                                     exitTransition = { ExitTransition.None }
                                 ) {
                                     saveableStateHolder.SaveableStateProvider(LibraryRouter.route) {
-                                        Library().LibraryScreen()
+                                        Library().LibraryScreen(navController)
                                     }
                                 }
 
@@ -365,7 +366,7 @@ class MainActivity: ComponentActivity() {
                                     exitTransition = { ExitTransition.None }
                                 ) {
                                     saveableStateHolder.SaveableStateProvider(SearchRouter.route) {
-                                        Search().SearchScreen()
+                                        Search().SearchScreen(onBackPressed = { finish() })
                                     }
                                 }
 
@@ -398,12 +399,13 @@ class MainActivity: ComponentActivity() {
                                         }
                                     }
                                 }
-                            }
-                            composable(UpgradeRouter.route){
-                                saveableStateHolder.SaveableStateProvider(UpgradeRouter.route) {
-                                    Upgrade().UpgradeScreen(navController = navController)
+                                composable(UpgradeRouter.route){
+                                    saveableStateHolder.SaveableStateProvider(UpgradeRouter.route) {
+                                        Upgrade().UpgradeScreen(navController = navController)
+                                    }
                                 }
                             }
+
                         }
                     }
                 }

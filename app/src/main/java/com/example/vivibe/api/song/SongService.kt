@@ -155,4 +155,17 @@ class SongService(context: Context, token: String) {
             null
         }
     }
+    suspend fun searchSongAndArtist(query: String): QuickPicksResponse? {
+        return try {
+            val response = api.searchSongAndArtist(query)
+            if(response.isSuccessful) {
+                response.body()
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }
