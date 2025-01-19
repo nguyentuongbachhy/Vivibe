@@ -3,8 +3,6 @@ package com.example.vivibe.pages
 import android.app.Activity
 import android.content.Context
 import android.os.Bundle
-import android.os.StrictMode
-import android.os.StrictMode.ThreadPolicy
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -23,11 +21,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
+import androidx.navigation.NavController
 import com.example.vivibe.api.CreateOrder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import vn.zalopay.sdk.Environment
 import vn.zalopay.sdk.ZaloPayError
 import vn.zalopay.sdk.ZaloPaySDK
@@ -37,32 +36,35 @@ class Payment : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Allow network operations on main thread (not recommended for production)
-        val policy = ThreadPolicy.Builder().permitAll().build()
-        StrictMode.setThreadPolicy(policy)
-
         // Initialize ZaloPay SDK
-        ZaloPaySDK.init(553, Environment.SANDBOX) // Use your App ID
-
+        ZaloPaySDK.init(2554, Environment.SANDBOX)
+        Log.d("Payment", "ZaloPay SDK initialized")
         enableEdgeToEdge()
         setContent {
-            PaymentScreen()
+            PaymentScreen(
+                navController = TODO()
+            )
         }
     }
 }
-@Preview
 @Composable
-fun PaymentScreen() {
-    val context = LocalContext.current // Get current context
-    val selectedPaymentMethod = remember { mutableStateOf("") } // Track selected method
+fun PaymentScreen(navController: NavController) {
+    val months = navController.currentBackStackEntry
+        ?.arguments
+        ?.getString("months")?.toIntOrNull() ?: 1
+    LaunchedEffect(Unit) {
+        ZaloPaySDK.init(2553, Environment.SANDBOX) // App ID và môi trường (Sandbox hoặc Production)
+        Log.d("Payment", "ZaloPay SDK initialized")
+    }
+    val context = LocalContext.current
+    val selectedPaymentMethod = remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Video background
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0x80101010)) // Semi-transparent overlay
+                .background(Color(0x80101010))
                 .padding(0.dp, 100.dp),
             contentAlignment = Alignment.TopCenter
         ) {
@@ -79,13 +81,12 @@ fun PaymentScreen() {
                 )
 
                 Text(
-                    text = "Enjoy ad-free music for $14.98/month.",
+                    text = "Enjoy ad-free music for 85.000đ/months.",
                     color = Color.White,
                     fontSize = 16.sp,
                     modifier = Modifier.padding(bottom = 24.dp)
                 )
 
-                // Payment options card
                 Card(
                     modifier = Modifier.width(300.dp),
                     shape = RoundedCornerShape(12.dp)
@@ -98,12 +99,6 @@ fun PaymentScreen() {
                             color = Color.Black,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
-
-                        PaymentOption(
-                            label = "Momo",
-                            isSelected = selectedPaymentMethod.value == "Momo",
-                            onSelect = { selectedPaymentMethod.value = "Momo" }
-                        )
                         PaymentOption(
                             label = "ZaloPay",
                             isSelected = selectedPaymentMethod.value == "ZaloPay",
@@ -112,17 +107,18 @@ fun PaymentScreen() {
                     }
                 }
 
-                // Confirm Payment Button
                 Button(
                     onClick = {
-                        handlePayment(context, selectedPaymentMethod.value)
+                        scope.launch {
+                            processPayment(context, selectedPaymentMethod.value,months)
+                        }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Blue),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7FFFD4)),
                     modifier = Modifier.padding(top = 24.dp)
                 ) {
                     Text(
                         text = "Confirm Payment",
-                        color = Color.White,
+                        color = Color.Black,
                         fontSize = 16.sp
                     )
                 }
@@ -137,7 +133,6 @@ fun PaymentScreen() {
         }
     }
 }
-
 
 @Composable
 fun PaymentOption(label: String, isSelected: Boolean, onSelect: () -> Unit) {
@@ -158,53 +153,96 @@ fun PaymentOption(label: String, isSelected: Boolean, onSelect: () -> Unit) {
         )
     }
 }
-
-fun handlePayment(context: android.content.Context, paymentMethod: String) {
+private suspend fun processPayment(context: Context, paymentMethod: String, months:Int) {
     if (paymentMethod.isEmpty()) {
-        Toast.makeText(context, "Please select a payment method", Toast.LENGTH_SHORT).show()
+        Log.d("Payment", "Please select a payment method")
         return
     }
-
-    val total = 59000 // Amount in smallest unit
     val orderApi = CreateOrder()
-
     try {
-        val data = orderApi.createOrder(total.toString())
-        Log.d("Payment", "Order Data: $data")
-        val returnCode = data.getString("return_code")
-        if (returnCode == "1") {
-            val token = data.getString("zp_trans_token")
-            // Cast Context to Activity
-            val activity = context as? Activity
-            activity?.let {
-                ZaloPaySDK.getInstance().payOrder(
-                    it,  // Pass the Activity instance
-                    token,
-                    "demozpdk://app",
-                    object : PayOrderListener {
-                        // Payment success handler
-                        override fun onPaymentSucceeded(transactionId: String, zpTransToken: String, extraInfo: String) {
-                            Log.d("Payment", "Success: $transactionId, Token: $zpTransToken, Info: $extraInfo")
-                            Toast.makeText(context, "Payment succeeded!", Toast.LENGTH_SHORT).show()
-                        }
+        val total = when (months) {
+            1 -> 85000 // Giá 1 tháng
+            3 -> 240000 // Giá 3 tháng
+            else -> 0 // Mặc định, không hợp lệ
+        }
+        val data = withContext(Dispatchers.IO) {
+            orderApi.createOrder(java.lang.String.valueOf(total))
+        }
 
-                        // Implement the missing onPaymentCanceled method
-                        override fun onPaymentCanceled(zpTransToken: String, appTransID: String) {
-                            Log.d("Payment", "Canceled: Token: $zpTransToken, AppTransID: $appTransID")
-                            Toast.makeText(context, "Payment was canceled", Toast.LENGTH_SHORT).show()
-                        }
+        if (data == null) {
+            Log.d("Payment", "Order creation failed!")
+            Log.d("Payment", "Response is null")
+            return
+        }
 
-                        override fun onPaymentError(p0: ZaloPayError?, p1: String?, p2: String?) {
-                            TODO("Not yet implemented")
-                        }
+        Log.d("Payment", "Order creation response: $data")
+
+        // Changed from return_code to returncode to match API response
+        val returnCode = data.optInt("returncode", Int.MIN_VALUE)
+        Log.d("Payment", "Return code: $returnCode")
+
+        when (returnCode) {
+            1 -> {
+                val token = data.optString("zptranstoken", "")  // Changed from zp_trans_token to match API
+                if (token.isEmpty()) {
+                    Log.d("Payment", "Invalid response - missing token")
+                    Log.d("Payment", "Payment initialization failed - missing token")
+                    return
+                }
+
+                Log.d("Payment", "Got token: $token")
+
+                val activity = context as? Activity
+                if (activity == null) {
+                    Log.d("Payment", "Invalid context")
+                    return
+                }
+
+                withContext(Dispatchers.Main) {
+                    val activity = context as? Activity
+                    if (activity != null) {
+                        ZaloPaySDK.getInstance().payOrder(
+                            activity,
+                            token,  // Đây là giá trị "zptranstoken" bạn nhận được từ API
+                            "demozpdk://app",  // Callback URL (scheme đã khai báo trong manifest)
+                            object : PayOrderListener {
+                                override fun onPaymentSucceeded(transactionId: String, zpTransToken: String, extraInfo: String) {
+                                    Log.d("Payment", "Payment succeeded!")
+                                    Log.d("Payment", "Transaction ID: $transactionId, ZP Trans Token: $zpTransToken")
+                                }
+
+                                override fun onPaymentCanceled(zpTransToken: String, appTransID: String) {
+                                    Log.d("Payment", "Payment was canceled")
+                                    Log.d("Payment", "ZP Trans Token: $zpTransToken, App Trans ID: $appTransID")
+                                }
+
+                                override fun onPaymentError(error: ZaloPayError?, message: String?, details: String?) {
+                                    Log.d("Payment", "Payment failed: $message")
+                                    Log.d("Payment", "Error Details: $details")
+                                }
+                            }
+                        )
+                    } else {
+                        Log.d("Payment", "Invalid context")
                     }
-                )
+                }
+
             }
-        } else {
-            Toast.makeText(context, "Payment error: Invalid return code.", Toast.LENGTH_SHORT).show()
+            -2 -> {
+                Log.d("Payment", "Order creation failed: App ID or MAC authentication failed")
+            }
+            -39 -> {
+                Log.d("Payment", "Order creation failed: Invalid amount")
+            }
+            -146 -> {
+                Log.d("Payment", "Order creation failed: Duplicate transaction ID")
+            }
+            else -> {
+                val returnMessage = data.optString("returnmessage", "Unknown error")
+                Log.d("Payment", "Order creation failed: $returnMessage")
+            }
         }
     } catch (e: Exception) {
-        e.printStackTrace()
-        Toast.makeText(context, "An error occurred.", Toast.LENGTH_SHORT).show()
+        Log.d("Payment", "Payment error: ${e.message}")
     }
 }

@@ -15,11 +15,11 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.ResponseBody;
 import okhttp3.TlsVersion;
 
 public class HttpProvider {
-     public static JSONObject sendPost(String URL, RequestBody formBody) {
-        JSONObject data = new JSONObject();
+    public static JSONObject sendPost(String URL, RequestBody formBody) {
         try {
             ConnectionSpec spec = new ConnectionSpec.Builder(ConnectionSpec.MODERN_TLS)
                     .tlsVersions(TlsVersion.TLS_1_2)
@@ -31,7 +31,9 @@ public class HttpProvider {
 
             OkHttpClient client = new OkHttpClient.Builder()
                     .connectionSpecs(Collections.singletonList(spec))
-                    .callTimeout(5000, TimeUnit.MILLISECONDS)
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
                     .build();
 
             Request request = new Request.Builder()
@@ -40,19 +42,57 @@ public class HttpProvider {
                     .post(formBody)
                     .build();
 
-            Response response = client.newCall(request).execute();
+            try (Response response = client.newCall(request).execute()) {
+                ResponseBody responseBody = response.body();
+                if (responseBody == null) {
+                    Log.e("HttpProvider", "Response body is null");
+                    return new JSONObject().put("return_code", "-1")
+                            .put("return_message", "Empty response from server");
+                }
 
-            if (!response.isSuccessful()) {
-                Log.println(Log.ERROR, "BAD_REQUEST", response.body().string());
-                data = null;
-            } else {
-                data = new JSONObject(response.body().string());
+                String responseString = responseBody.string();
+                Log.d("HttpProvider", "Response: " + responseString);
+
+                if (!response.isSuccessful()) {
+                    Log.e("HttpProvider", "Request failed with code: " + response.code());
+                    return new JSONObject()
+                            .put("return_code", "-1")
+                            .put("return_message", "HTTP " + response.code() + ": " + responseString);
+                }
+
+                return new JSONObject(responseString);
             }
 
-        }  catch (IOException | JSONException e) {
+        } catch (IOException e) {
+            Log.e("HttpProvider", "IO Exception: " + e.getMessage());
             e.printStackTrace();
+            try {
+                return new JSONObject()
+                        .put("return_code", "-1")
+                        .put("return_message", "Network error: " + e.getMessage());
+            } catch (JSONException je) {
+                Log.e("HttpProvider", "JSON Exception while handling IO Exception", je);
+            }
+        } catch (JSONException e) {
+            Log.e("HttpProvider", "JSON Exception: " + e.getMessage());
+            e.printStackTrace();
+            try {
+                return new JSONObject()
+                        .put("return_code", "-1")
+                        .put("return_message", "Invalid JSON response: " + e.getMessage());
+            } catch (JSONException je) {
+                Log.e("HttpProvider", "JSON Exception while handling JSON Exception", je);
+            }
         }
 
-        return data;
+        // Fallback error response
+        try {
+            return new JSONObject()
+                    .put("return_code", "-1")
+                    .put("return_message", "Unknown error occurred");
+        } catch (JSONException e) {
+            // This should never happen
+            throw new RuntimeException(e);
+        }
     }
 }

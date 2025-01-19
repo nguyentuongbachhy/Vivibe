@@ -102,4 +102,8 @@ dependencies {
     implementation("commons-codec:commons-codec:1.14")
     implementation ("androidx.media3:media3-exoplayer:1.0.3")
     implementation ("androidx.media3:media3-ui:1.0.3")
+    implementation ("androidx.navigation:navigation-compose:2.5.0")
+    implementation ("androidx.lifecycle:lifecycle-viewmodel-compose:2.5.0")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 }

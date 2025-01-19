@@ -10,12 +10,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.navigation.compose.NavHost
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavController
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.MarqueeSpacing
@@ -73,7 +75,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -398,12 +399,16 @@ class MainActivity: ComponentActivity() {
                                         }
                                     }
                                 }
-                            }
-                            composable(UpgradeRouter.route){
-                                saveableStateHolder.SaveableStateProvider(UpgradeRouter.route) {
-                                    Upgrade().UpgradeScreen(navController = navController)
+                                composable(UpgradeRouter.route){
+                                    saveableStateHolder.SaveableStateProvider(UpgradeRouter.route) {
+                                        Upgrade().UpgradeScreen(navController = navController)
+                                    }
+                                }
+                                composable(PaymentRouter.route) {
+                                    PaymentScreen(navController = navController)
                                 }
                             }
+
                         }
                     }
                 }

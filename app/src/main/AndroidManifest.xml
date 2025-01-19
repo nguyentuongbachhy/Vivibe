@@ -21,13 +21,22 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Vivibe"
+        android:usesCleartextTraffic="true"
         tools:targetApi="31">
         <activity
             android:name=".pages.Payment"
-            android:exported="false"
             android:label="Merchant Demo"
-            android:theme="@style/Theme.Vivibe"
-            android:launchMode="singleTask"/>
+            android:launchMode="singleTask"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="app"
+                    android:scheme="demozpdk" />
+            </intent-filter>
+        </activity>
         <activity
             android:name=".MainActivity"
             android:exported="true"
