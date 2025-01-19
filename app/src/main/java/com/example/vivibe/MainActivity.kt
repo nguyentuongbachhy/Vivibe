@@ -407,6 +407,12 @@ class MainActivity: ComponentActivity() {
                                 composable(PaymentRouter.route) {
                                     PaymentScreen(navController = navController)
                                 }
+                                composable(AccountRouter.route) {
+                                    MyAccount().MyAccountScreen(navController = navController)
+                                }
+                                composable(AccountRouter.route) {
+                                    MyAccount().MyAccountScreen(navController = navController)
+                                }
                             }
 
                         }

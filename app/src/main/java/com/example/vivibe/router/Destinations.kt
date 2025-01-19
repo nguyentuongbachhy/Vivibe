@@ -66,8 +66,30 @@ object SearchRouter: Destinations {
 }
 
   object PaymentRouter: Destinations {
+<<<<<<< Updated upstream
+=======
+<<<<<<< Updated upstream
+    override val route: String = "payment"
+    override val title: String = "Payment"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+=======
+>>>>>>> Stashed changes
       override val route: String = "payment"
       override val title: String = "Payment"
       override val iconFilled: Int = 0
       override val iconOutline: Int = 0
   }
+<<<<<<< Updated upstream
+=======
+object AccountRouter: Destinations {
+    override val route: String = "account"
+    override val title: String = "account"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
+>>>>>>> Stashed changes

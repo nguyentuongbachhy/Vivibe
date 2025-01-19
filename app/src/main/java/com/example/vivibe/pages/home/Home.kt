@@ -196,6 +196,7 @@ class Home(private val appContext: Context) {
             if (user == null) {
                 IconButton(
                     onClick = {
+
                         scope.launch {
                             val success = homeViewModel.signIn(context)
                             if(success) {
@@ -216,10 +217,7 @@ class Home(private val appContext: Context) {
             } else {
                 IconButton(
                     onClick = {
-                        scope.launch {
-                            homeViewModel.signOut()
-                            (context as? MainActivity)?.reloadActivity()
-                        }
+                        navController.navigate("account")
                     },
                     modifier = Modifier.size(24.dp)
                 ) {
