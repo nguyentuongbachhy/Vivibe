@@ -104,4 +104,6 @@ interface SongInterface {
 
     @GET("/api/v1/song/get-downloaded-song")
     suspend fun fetchDownloadedSong(@Query("songId") songId: Int): Response<DownloadedSongResponse>
+    @GET("/api/v1/song/search")
+    suspend fun searchSongAndArtist(@Query("query") query: String): Response<QuickPicksResponse>
 }

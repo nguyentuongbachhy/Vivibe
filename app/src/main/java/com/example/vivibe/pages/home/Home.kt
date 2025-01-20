@@ -195,13 +195,16 @@ class Home(private val appContext: Context) {
 
             if (user == null) {
                 IconButton(
+//                    onClick = {
+//                        scope.launch {
+//                            val success = homeViewModel.signIn(context)
+//                            if(success) {
+//                                (context as? MainActivity)?.reloadActivity()
+//                            }
+//                        }
+//                    },
                     onClick = {
-                        scope.launch {
-                            val success = homeViewModel.signIn(context)
-                            if(success) {
-                                (context as? MainActivity)?.reloadActivity()
-                            }
-                        }
+                        navController.navigate("Account") // Điều hướng tới màn hình cài đặt
                     },
                     modifier = Modifier.size(24.dp)
                 ) {

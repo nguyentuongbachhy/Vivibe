@@ -195,4 +195,21 @@ class SongClient(context: Context, token: String?) {
             null
         }
     }
+    suspend fun searchSongAndArtist(query: String): List<QuickPicksSong> {
+        if(songService == null) return emptyList()
+        return try {
+            val response = songService.searchSongAndArtist(query)
+            if(response?.err == 0) {
+                response.data?.also {
+                    println("$tag Search results fetched successfully")
+                } ?: emptyList()
+            } else {
+                print("$tag Error: ${response?.msg}")
+                emptyList()
+            }
+        } catch (e: Exception) {
+            print("$tag Error: ${e.message}")
+            emptyList()
+        }
+    }
 }

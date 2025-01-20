@@ -18,12 +18,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-
 class HomeViewModel(appContext: Context, exoPlayer: SharedExoPlayer) : ViewModel() {
+
     data class HomeState(
         val isRefreshing: Boolean = false,
         val showTokenExpiredDialog: Boolean = false,
-        val selectedGenre: Genre = Genre.ALL
+        val selectedGenre: Genre = Genre.ALL,
+        val navigateToSettings: Boolean = false // Trạng thái để điều hướng đến Settings
     )
 
     private val userManager = UserManager.getInstance(appContext)
@@ -32,14 +33,16 @@ class HomeViewModel(appContext: Context, exoPlayer: SharedExoPlayer) : ViewModel
     val state = _state.asStateFlow()
 
     private val savedStateHandle = SavedStateHandle()
-    private val _homeComponentViewModel = MutableStateFlow(HomeComponentViewModel(
-        savedStateHandle,
-        SongClient(appContext, userManager.getToken()),
-        GenreClient(appContext, userManager.getToken()),
-        DatabaseHelper(appContext),
-        userManager = userManager,
-        exoPlayer = exoPlayer
-    ))
+    private val _homeComponentViewModel = MutableStateFlow(
+        HomeComponentViewModel(
+            savedStateHandle,
+            SongClient(appContext, userManager.getToken()),
+            GenreClient(appContext, userManager.getToken()),
+            DatabaseHelper(appContext),
+            userManager = userManager,
+            exoPlayer = exoPlayer
+        )
+    )
     val homeComponentViewModel: StateFlow<HomeComponentViewModel> get() = _homeComponentViewModel
 
     private val googleAuthClient = GoogleSignInClient(appContext)
@@ -67,7 +70,7 @@ class HomeViewModel(appContext: Context, exoPlayer: SharedExoPlayer) : ViewModel
     private fun observeTokenExpiration() {
         viewModelScope.launch {
             userManager.tokenExpired.collect { isExpired ->
-                if(isExpired) {
+                if (isExpired) {
                     _state.value = _state.value.copy(showTokenExpiredDialog = true)
                     userManager.setTokenExpired()
                 }
@@ -84,6 +87,18 @@ class HomeViewModel(appContext: Context, exoPlayer: SharedExoPlayer) : ViewModel
     fun dismissTokenExpiredDialog() {
         viewModelScope.launch {
             _state.value = _state.value.copy(showTokenExpiredDialog = false)
+        }
+    }
+
+    fun navigateToSettings() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(navigateToSettings = true)
+        }
+    }
+
+    fun resetNavigationFlag() {
+        viewModelScope.launch {
+            _state.value = _state.value.copy(navigateToSettings = false)
         }
     }
 
