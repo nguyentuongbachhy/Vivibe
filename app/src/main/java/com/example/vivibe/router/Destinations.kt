@@ -1,0 +1,124 @@
+package com.example.vivibe.router
+
+import com.example.vivibe.R
+
+interface Destinations {
+    val route: String
+    val title: String
+    val iconFilled: Int
+    val iconOutline: Int
+}
+
+
+object HomeRouter: Destinations {
+    override val route: String = "home"
+    override val title: String = "Home"
+    override val iconFilled: Int = R.drawable.ic_home_filled
+    override val iconOutline: Int = R.drawable.ic_home_outline
+}
+
+object ArtistRouter: Destinations {
+    const val artistIdArg = "artistId"
+    override val route: String = "artist"
+    override val title: String = "Artist"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+
+object AlbumRouter: Destinations {
+    const val albumIdArg = "albumId"
+    override val route: String = "album"
+    override val title: String = "Album"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+
+object PlaylistRouter: Destinations {
+    const val playlistIdArg = "playlistId"
+    override val route: String = "playlist"
+    override val title: String = "Playlist"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+
+
+object GenreRouter: Destinations {
+    const val genreIdArg = "genreId"
+    override val route: String = "genre"
+    override val title: String = "Genre"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+
+}
+
+object ExploreRouter: Destinations {
+    override val route: String = "explore"
+    override val title: String = "Explore"
+    override val iconFilled: Int = R.drawable.ic_explore_filled
+    override val iconOutline: Int = R.drawable.ic_explore_outline
+}
+
+object LibraryRouter: Destinations {
+    override val route: String = "library"
+    override val title: String = "Library"
+    override val iconFilled: Int = R.drawable.ic_library_filled
+    override val iconOutline: Int = R.drawable.ic_library_outline
+}
+
+object SamplesRouter: Destinations {
+    override val route: String = "samples"
+    override val title: String = "Samples"
+    override val iconFilled: Int = R.drawable.ic_samples_filled
+    override val iconOutline: Int = R.drawable.ic_samples_outline
+}
+
+object NotificationsRouter: Destinations {
+    override val route: String = "notifications"
+    override val title: String = "Notifications"
+    override val iconFilled: Int = R.drawable.ic_notifications
+    override val iconOutline: Int = R.drawable.ic_notifications
+}
+
+object SearchRouter: Destinations {
+    override val route: String = "search"
+    override val title: String = "Search"
+    override val iconFilled: Int = R.drawable.ic_search
+    override val iconOutline: Int = R.drawable.ic_search
+}
+
+object CommonRouter: Destinations {
+    const val screenIdArg = "screenId"
+    override val route: String = "common"
+    override val title: String = "common"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+
+object HistoryRouter: Destinations {
+    override val route: String = "history"
+    override val title: String = "History"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+
+object AccountRouter: Destinations {
+    override val route: String = "account"
+    override val title: String = "account"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+}
+
+object UpgradeRouter: Destinations {
+    override val route: String = "upgrade"
+    override val title: String = "Upgrade"
+    override val iconFilled: Int = R.drawable.ic_premium_filled
+    override val iconOutline: Int = R.drawable.ic_premium_outline
+}
+
+object PaymentRouter: Destinations {
+    override val route: String = "payment"
+    override val title: String = "Payment"
+    override val iconFilled: Int = 0
+    override val iconOutline: Int = 0
+
+}
